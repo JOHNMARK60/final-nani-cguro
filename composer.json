@@ -1,0 +1,19 @@
+{
+    "name": "e-parish/e-parish",
+    "description": "E-Parish parish management system",
+    "type": "project",
+    "require": {
+        "php": "^8.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "classes/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}

@@ -1,0 +1,6 @@
+[2026-05-11 14:58:34] INFO: SMTP unavailable; fallback delivery used. {"to":"johnmarkyecyec18@gmail.com","subject":"E-Parish Appointment Update"}
+[2026-05-11 15:55:58] ERROR: Login failed {"error":"Your session expired. Please try again."}
+[2026-05-12 04:39:27] ERROR: Certificate request failed {"error":"SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`eparish_db`.`certificate_requests`, CONSTRAINT `fk_certificate_requests_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE)"}
+[2026-05-12 04:48:34] ERROR: Certificate request failed {"error":"SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`eparish_db`.`certificate_requests`, CONSTRAINT `fk_certificate_requests_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE)"}
+[2026-05-12 05:23:44] INFO: SMTP unavailable; fallback delivery used. {"to":"johnmarkyecyec19@gmail.com","subject":"E-Parish Appointment Update"}
+[2026-05-12 05:23:55] INFO: SMTP unavailable; fallback delivery used. {"to":"johnmarkyecyec18@gmail.com","subject":"E-Parish Appointment Update"}

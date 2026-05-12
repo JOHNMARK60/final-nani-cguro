@@ -175,7 +175,7 @@ function sidebar(string $active): void
                 <i class="bi bi-houses text-2xl"></i>
             </div>
             <div>
-                <div class="text-2xl font-extrabold leading-none tracking-tight text-slate-950"><span class="text-parish">O</span> E-Parish</div>
+                <div class="text-2xl font-extrabold leading-none tracking-tight text-slate-950">E-Parish</div>
                 <div class="mt-1 text-xs font-medium uppercase tracking-[0.2em] text-slate-400">Services</div>
             </div>
         </div>

@@ -99,7 +99,7 @@ app_header('Certificates', $user);
         <div class="mb-6 flex items-start justify-between"><h3 class="text-3xl font-black text-parish">Request Certificate</h3><button type="button" data-close class="text-2xl">&times;</button></div>
         <?= csrf_field() ?>
         <div class="grid gap-4 sm:grid-cols-2">
-            <label><span class="mb-1 block font-bold">Certificate Type</span><select name="certificate_type" required class="w-full rounded-lg border p-3"><option>Baptismal Certificate</option><option>Confirmation Certificate</option><option>Marriage Certificate</option><option>Death Certificate</option></select></label>
+            <label><span class="mb-1 block font-bold">Certificate Type</span><select name="certificate_type" id="certificateType" required class="w-full rounded-lg border p-3"><option>Baptismal Certificate</option><option>Confirmation Certificate</option><option>Marriage Certificate</option><option>Death Certificate</option></select></label>
             <label><span class="mb-1 block font-bold">Birth Date</span><input type="date" name="birth_date" required class="w-full rounded-lg border p-3"></label>
             <label class="sm:col-span-2"><span class="mb-1 block font-bold">Full Name</span><input name="full_name" required class="w-full rounded-lg border p-3"></label>
             <label class="sm:col-span-2">
@@ -110,8 +110,13 @@ app_header('Certificates', $user);
                 </select>
                 <span id="deliveryHint" class="mt-2 block rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">Near members are guided to claim the certificate at the parish office.</span>
             </label>
-            <label><span class="mb-1 block font-bold">Baptismal File</span><input type="file" name="baptismal_file" accept=".jpg,.jpeg,.png,.pdf" class="w-full rounded-lg border p-3"></label>
-            <label><span class="mb-1 block font-bold">Valid ID</span><input type="file" name="id_file" accept=".jpg,.jpeg,.png,.pdf" class="w-full rounded-lg border p-3"></label>
+            <div id="supportingDocumentGroup" class="sm:col-span-1">
+                <div id="supportingDocumentField" class="max-h-0 overflow-hidden opacity-0 pointer-events-none translate-y-1 transition-all duration-200 ease-in-out">
+                    <label class="block"><span class="mb-1 block text-sm font-bold">Supporting Document</span><input type="file" name="baptismal_file" id="supportingDocumentInput" accept=".jpg,.jpeg,.png,.pdf" class="w-full rounded-lg border p-3"></label>
+                </div>
+                <div id="supportingDocumentHelper" class="mt-2 max-h-24 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-700 opacity-100 translate-y-0 transition-all duration-200 ease-in-out">If you have an old copy of your baptismal certificate, you may upload it optionally to help us locate records faster.</div>
+            </div>
+            <label><span class="mb-1 block font-bold">Valid ID</span><input type="file" name="id_file" accept=".jpg,.jpeg,.png,.pdf" required class="w-full rounded-lg border p-3"></label>
             <label class="sm:col-span-2"><span class="mb-1 block font-bold">Notes</span><textarea name="notes" class="w-full rounded-lg border p-3"></textarea></label>
         </div>
         <button class="mt-6 w-full rounded-lg bg-parish py-3 font-bold text-white">Submit Request</button>
@@ -122,6 +127,11 @@ document.querySelector('[data-open]')?.addEventListener('click', e => document.g
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('.fixed').classList.replace('flex', 'hidden')));
 const requesterLocation = document.getElementById('requesterLocation');
 const deliveryHint = document.getElementById('deliveryHint');
+const certificateType = document.getElementById('certificateType');
+const supportingDocumentGroup = document.getElementById('supportingDocumentGroup');
+const supportingDocumentField = document.getElementById('supportingDocumentField');
+const supportingDocumentInput = document.getElementById('supportingDocumentInput');
+const supportingDocumentHelper = document.getElementById('supportingDocumentHelper');
 if (requesterLocation && deliveryHint) {
     const syncDeliveryHint = () => {
         deliveryHint.textContent = requesterLocation.value === 'Far from Parish'
@@ -130,6 +140,31 @@ if (requesterLocation && deliveryHint) {
     };
     requesterLocation.addEventListener('change', syncDeliveryHint);
     syncDeliveryHint();
+}
+if (certificateType && supportingDocumentGroup && supportingDocumentField && supportingDocumentInput && supportingDocumentHelper) {
+    const syncSupportingDocument = () => {
+        const isBaptismal = certificateType.value === 'Baptismal Certificate';
+        supportingDocumentInput.required = false;
+        supportingDocumentInput.value = '';
+        supportingDocumentField.classList.toggle('opacity-0', isBaptismal);
+        supportingDocumentField.classList.toggle('max-h-0', isBaptismal);
+        supportingDocumentField.classList.toggle('overflow-hidden', isBaptismal);
+        supportingDocumentField.classList.toggle('pointer-events-none', isBaptismal);
+        supportingDocumentField.classList.toggle('translate-y-1', isBaptismal);
+        supportingDocumentField.classList.toggle('max-h-40', !isBaptismal);
+        supportingDocumentField.classList.toggle('opacity-100', !isBaptismal);
+        supportingDocumentField.classList.toggle('translate-y-0', !isBaptismal);
+        supportingDocumentHelper.classList.toggle('opacity-0', !isBaptismal);
+        supportingDocumentHelper.classList.toggle('max-h-0', !isBaptismal);
+        supportingDocumentHelper.classList.toggle('overflow-hidden', !isBaptismal);
+        supportingDocumentHelper.classList.toggle('pointer-events-none', !isBaptismal);
+        supportingDocumentHelper.classList.toggle('translate-y-1', !isBaptismal);
+        supportingDocumentHelper.classList.toggle('max-h-24', isBaptismal);
+        supportingDocumentHelper.classList.toggle('opacity-100', isBaptismal);
+        supportingDocumentHelper.classList.toggle('translate-y-0', isBaptismal);
+    };
+    certificateType.addEventListener('change', syncSupportingDocument);
+    syncSupportingDocument();
 }
 </script>
 <?php app_footer(); page_end(); ?>

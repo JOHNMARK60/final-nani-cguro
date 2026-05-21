@@ -19,6 +19,7 @@ final class UserTest extends TestCase
                 username TEXT,
                 password TEXT,
                 role TEXT,
+                status TEXT DEFAULT "active",
                 phone TEXT NULL,
                 designation TEXT NULL,
                 profile_pic TEXT NULL,

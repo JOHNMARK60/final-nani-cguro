@@ -5,22 +5,35 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Core\BaseModel;
+use InvalidArgumentException;
 
 final class Payment extends BaseModel
 {
+    private const PAYMENT_SELECT = "p.*, pm.name AS method, pc.name AS payable_type,
+        CASE
+            WHEN pc.name = 'Certificate' THEN p.certificate_request_id
+            WHEN pc.name = 'Appointment' THEN p.appointment_id
+            ELSE NULL
+        END AS payable_id";
+
     public function create(array $data): int
     {
+        $payableType = (string) $data['payable_type'];
+        $certificateRequestId = $payableType === 'Certificate' && !empty($data['payable_id']) ? (int) $data['payable_id'] : null;
+        $appointmentId = $payableType === 'Appointment' && !empty($data['payable_id']) ? (int) $data['payable_id'] : null;
+
         $this->execute(
             'INSERT INTO payments
-             (user_id, payable_type, payable_id, description, amount, method, reference_number, proof_file, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+             (user_id, payment_category_id, certificate_request_id, appointment_id, description, amount, payment_method_id, reference_number, proof_file, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $data['user_id'],
-                $data['payable_type'],
-                $data['payable_id'] ?? null,
+                $this->paymentCategoryId($payableType),
+                $certificateRequestId,
+                $appointmentId,
                 $data['description'],
                 $data['amount'],
-                $data['method'],
+                $this->paymentMethodId((string) $data['method']),
                 $data['reference_number'] ?? null,
                 $data['proof_file'] ?? null,
                 $data['status'],
@@ -33,8 +46,10 @@ final class Payment extends BaseModel
     public function find(int $id): ?array
     {
         return $this->fetch(
-            'SELECT p.*, u.fullname AS member_name, u.email AS member_email
+            'SELECT ' . self::PAYMENT_SELECT . ', u.fullname AS member_name, u.email AS member_email
              FROM payments p
+             INNER JOIN payment_methods pm ON pm.id = p.payment_method_id
+             INNER JOIN payment_categories pc ON pc.id = p.payment_category_id
              LEFT JOIN users u ON u.id = p.user_id
              WHERE p.id = ?',
             [$id]
@@ -43,20 +58,41 @@ final class Payment extends BaseModel
 
     public function findForUser(int $id, int $userId): ?array
     {
-        return $this->fetch('SELECT * FROM payments WHERE id = ? AND user_id = ?', [$id, $userId]);
+        return $this->fetch(
+            'SELECT ' . self::PAYMENT_SELECT . '
+             FROM payments p
+             INNER JOIN payment_methods pm ON pm.id = p.payment_method_id
+             INNER JOIN payment_categories pc ON pc.id = p.payment_category_id
+             WHERE p.id = ? AND p.user_id = ?',
+            [$id, $userId]
+        );
     }
 
     public function verifiedFor(string $payableType, int $payableId, ?int $userId = null): ?array
     {
-        $sql = 'SELECT * FROM payments WHERE payable_type = ? AND payable_id = ? AND status = "Verified"';
+        $targetColumn = match ($payableType) {
+            'Certificate' => 'p.certificate_request_id',
+            'Appointment' => 'p.appointment_id',
+            default => null,
+        };
+
+        if ($targetColumn === null) {
+            return null;
+        }
+
+        $sql = 'SELECT ' . self::PAYMENT_SELECT . '
+                FROM payments p
+                INNER JOIN payment_methods pm ON pm.id = p.payment_method_id
+                INNER JOIN payment_categories pc ON pc.id = p.payment_category_id
+                WHERE pc.name = ? AND ' . $targetColumn . ' = ? AND p.status = "Verified"';
         $params = [$payableType, $payableId];
 
         if ($userId !== null) {
-            $sql .= ' AND user_id = ?';
+            $sql .= ' AND p.user_id = ?';
             $params[] = $userId;
         }
 
-        $sql .= ' ORDER BY verified_at DESC, updated_at DESC LIMIT 1';
+        $sql .= ' ORDER BY p.verified_at DESC, p.updated_at DESC LIMIT 1';
 
         return $this->fetch($sql, $params);
     }
@@ -64,7 +100,12 @@ final class Payment extends BaseModel
     public function forUser(int $userId): array
     {
         return $this->fetchAll(
-            'SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC',
+            'SELECT ' . self::PAYMENT_SELECT . '
+             FROM payments p
+             INNER JOIN payment_methods pm ON pm.id = p.payment_method_id
+             INNER JOIN payment_categories pc ON pc.id = p.payment_category_id
+             WHERE p.user_id = ?
+             ORDER BY p.created_at DESC',
             [$userId]
         );
     }
@@ -73,9 +114,9 @@ final class Payment extends BaseModel
     {
         return $this->execute(
             'UPDATE payments
-             SET method = ?, reference_number = ?, proof_file = COALESCE(?, proof_file), status = ?
+             SET payment_method_id = ?, reference_number = ?, proof_file = COALESCE(?, proof_file), status = ?
              WHERE id = ? AND user_id = ?',
-            [$method, $referenceNumber, $proofFile, 'Submitted', $id, $userId]
+            [$this->paymentMethodId($method), $referenceNumber, $proofFile, 'Submitted', $id, $userId]
         );
     }
 
@@ -91,16 +132,18 @@ final class Payment extends BaseModel
 
     public function queue(array $filters = [], int $limit = 20, int $offset = 0): array
     {
-        $sql = 'SELECT p.*, u.fullname AS member_name, u.email AS member_email
+        $sql = 'SELECT ' . self::PAYMENT_SELECT . ', u.fullname AS member_name, u.email AS member_email
                 FROM payments p
+                INNER JOIN payment_methods pm ON pm.id = p.payment_method_id
+                INNER JOIN payment_categories pc ON pc.id = p.payment_category_id
                 LEFT JOIN users u ON u.id = p.user_id
                 WHERE 1=1';
         $params = [];
 
         if (!empty($filters['search'])) {
-            $sql .= ' AND (p.description LIKE ? OR p.reference_number LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR p.id LIKE ?)';
+            $sql .= ' AND (p.description LIKE ? OR p.reference_number LIKE ? OR pc.name LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR p.id LIKE ?)';
             $like = '%' . $filters['search'] . '%';
-            $params = array_merge($params, [$like, $like, $like, $like, $like]);
+            $params = array_merge($params, [$like, $like, $like, $like, $like, $like]);
         }
 
         if (!empty($filters['status'])) {
@@ -109,7 +152,7 @@ final class Payment extends BaseModel
         }
 
         if (!empty($filters['method'])) {
-            $sql .= ' AND p.method = ?';
+            $sql .= ' AND pm.name = ?';
             $params[] = $filters['method'];
         }
 
@@ -132,14 +175,16 @@ final class Payment extends BaseModel
     {
         $sql = 'SELECT COUNT(*) AS total
                 FROM payments p
+                INNER JOIN payment_methods pm ON pm.id = p.payment_method_id
+                INNER JOIN payment_categories pc ON pc.id = p.payment_category_id
                 LEFT JOIN users u ON u.id = p.user_id
                 WHERE 1=1';
         $params = [];
 
         if (!empty($filters['search'])) {
-            $sql .= ' AND (p.description LIKE ? OR p.reference_number LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR p.id LIKE ?)';
+            $sql .= ' AND (p.description LIKE ? OR p.reference_number LIKE ? OR pc.name LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR p.id LIKE ?)';
             $like = '%' . $filters['search'] . '%';
-            $params = array_merge($params, [$like, $like, $like, $like, $like]);
+            $params = array_merge($params, [$like, $like, $like, $like, $like, $like]);
         }
 
         if (!empty($filters['status'])) {
@@ -148,7 +193,7 @@ final class Payment extends BaseModel
         }
 
         if (!empty($filters['method'])) {
-            $sql .= ' AND p.method = ?';
+            $sql .= ' AND pm.name = ?';
             $params[] = $filters['method'];
         }
 
@@ -218,11 +263,41 @@ final class Payment extends BaseModel
         $limit = max(1, min($limit, 50));
 
         return $this->fetchAll(
-            "SELECT p.*, u.fullname AS member_name
+            "SELECT " . self::PAYMENT_SELECT . ", u.fullname AS member_name
              FROM payments p
+             INNER JOIN payment_methods pm ON pm.id = p.payment_method_id
+             INNER JOIN payment_categories pc ON pc.id = p.payment_category_id
              LEFT JOIN users u ON u.id = p.user_id
              ORDER BY p.created_at DESC
              LIMIT {$limit}"
         );
+    }
+
+    private function paymentMethodId(string $name): int
+    {
+        $row = $this->fetch(
+            'SELECT id FROM payment_methods WHERE name = ? AND is_active = 1',
+            [trim($name)]
+        );
+
+        if (!$row) {
+            throw new InvalidArgumentException('Invalid payment method selected.');
+        }
+
+        return (int) $row['id'];
+    }
+
+    private function paymentCategoryId(string $name): int
+    {
+        $row = $this->fetch(
+            'SELECT id FROM payment_categories WHERE name = ? AND is_active = 1',
+            [trim($name)]
+        );
+
+        if (!$row) {
+            throw new InvalidArgumentException('Invalid payment category selected.');
+        }
+
+        return (int) $row['id'];
     }
 }

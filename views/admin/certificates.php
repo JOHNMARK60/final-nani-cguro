@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Certificate;
+use App\Models\ReferenceData;
 use App\Models\User;
 use App\Security\Auth;
 
@@ -13,6 +14,7 @@ Auth::requireRole('admin', '/E-Parish/index.php');
 
 $user = (new User($container->pdo()))->find(Auth::userId()) ?? [];
 $model = new Certificate($container->pdo());
+$certificateTypes = (new ReferenceData($container->pdo()))->certificateTypes();
 
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 10;
@@ -114,7 +116,14 @@ app_header('Certificate Queue', $user);
         <div class="grid gap-4 sm:grid-cols-2">
             <label><span class="mb-1 block font-bold">Certificate Number</span><input name="certificate_number" id="issue_certificate_number" placeholder="Auto if blank" class="w-full rounded-lg border border-slate-200 p-3"></label>
             <label><span class="mb-1 block font-bold">Delivery</span><select name="delivery_mode" id="issue_delivery_mode" class="w-full rounded-lg border border-slate-200 p-3"><option>Walk-in Pickup</option><option>E-Certificate</option></select></label>
-            <label><span class="mb-1 block font-bold">Certificate Type</span><select name="certificate_type" id="issue_certificate_type" class="w-full rounded-lg border border-slate-200 p-3"><option>Baptismal Certificate</option><option>Confirmation Certificate</option><option>Marriage Certificate</option><option>Death Certificate</option></select></label>
+            <label>
+                <span class="mb-1 block font-bold">Certificate Type</span>
+                <select name="certificate_type" id="issue_certificate_type" class="w-full rounded-lg border border-slate-200 p-3">
+                    <?php foreach ($certificateTypes as $type): ?>
+                        <option value="<?= e($type['name']) ?>"><?= e($type['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
             <label><span class="mb-1 block font-bold">Recipient Name</span><input name="recipient_name" id="issue_recipient_name" required class="w-full rounded-lg border border-slate-200 p-3"></label>
             <label><span class="mb-1 block font-bold">Church Name</span><input name="church_name" value="E-Parish Church" class="w-full rounded-lg border border-slate-200 p-3"></label>
             <label><span class="mb-1 block font-bold">Parish Address</span><input name="parish_address" value="Parish Office" class="w-full rounded-lg border border-slate-200 p-3"></label>

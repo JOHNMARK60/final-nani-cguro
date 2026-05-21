@@ -12,10 +12,18 @@ final class AppointmentTest extends TestCase
         $pdo = new PDO('sqlite::memory:');
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->exec(
+            'CREATE TABLE appointment_types (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                is_active INTEGER
+            )'
+        );
+        $pdo->exec("INSERT INTO appointment_types (name, is_active) VALUES ('Mass Intentions', 1)");
+        $pdo->exec(
             'CREATE TABLE appointments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
-                appointment_type TEXT,
+                appointment_type_id INTEGER,
                 appointment_date TEXT,
                 appointment_time TEXT,
                 notes TEXT,

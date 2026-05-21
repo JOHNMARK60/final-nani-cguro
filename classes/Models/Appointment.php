@@ -5,21 +5,27 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Core\BaseModel;
+use InvalidArgumentException;
 
 class Appointment extends BaseModel
 {
     public function create(int $userId, string $type, string $date, string $time, ?string $notes): bool
     {
         return $this->execute(
-            'INSERT INTO appointments (user_id, appointment_type, appointment_date, appointment_time, notes, status)
+            'INSERT INTO appointments (user_id, appointment_type_id, appointment_date, appointment_time, notes, status)
              VALUES (?, ?, ?, ?, ?, ?)',
-            [$userId, $type, $date, $time, $notes, 'Pending']
+            [$userId, $this->appointmentTypeId($type), $date, $time, $notes, 'Pending']
         );
     }
 
     public function all(): array
     {
-        return $this->fetchAll('SELECT * FROM appointments ORDER BY appointment_date DESC');
+        return $this->fetchAll(
+            'SELECT a.*, t.name AS appointment_type
+             FROM appointments a
+             INNER JOIN appointment_types t ON t.id = a.appointment_type_id
+             ORDER BY a.appointment_date DESC'
+        );
     }
 
     public function recent(int $limit = 10): array
@@ -27,8 +33,9 @@ class Appointment extends BaseModel
         $limit = max(1, min($limit, 50));
 
         return $this->fetchAll(
-            "SELECT a.*, u.fullname AS member_name, u.username AS member_username
+            "SELECT a.*, t.name AS appointment_type, u.fullname AS member_name, u.username AS member_username
              FROM appointments a
+             INNER JOIN appointment_types t ON t.id = a.appointment_type_id
              LEFT JOIN users u ON u.id = a.user_id
              ORDER BY a.created_at DESC
              LIMIT {$limit}"
@@ -38,8 +45,9 @@ class Appointment extends BaseModel
     public function pending(): array
     {
         return $this->fetchAll(
-            "SELECT a.*, u.fullname AS member_name, u.username AS member_username
+            "SELECT a.*, t.name AS appointment_type, u.fullname AS member_name, u.username AS member_username
              FROM appointments a
+             INNER JOIN appointment_types t ON t.id = a.appointment_type_id
              LEFT JOIN users u ON u.id = a.user_id
              WHERE a.status = 'Pending'
              ORDER BY a.created_at DESC"
@@ -49,23 +57,33 @@ class Appointment extends BaseModel
     public function forUser(int $userId): array
     {
         return $this->fetchAll(
-            'SELECT * FROM appointments WHERE user_id = ? ORDER BY appointment_date DESC',
+            'SELECT a.*, t.name AS appointment_type
+             FROM appointments a
+             INNER JOIN appointment_types t ON t.id = a.appointment_type_id
+             WHERE a.user_id = ?
+             ORDER BY a.appointment_date DESC',
             [$userId]
         );
     }
 
     public function find(int $id): ?array
     {
-        return $this->fetch('SELECT * FROM appointments WHERE id = ?', [$id]);
+        return $this->fetch(
+            'SELECT a.*, t.name AS appointment_type
+             FROM appointments a
+             INNER JOIN appointment_types t ON t.id = a.appointment_type_id
+             WHERE a.id = ?',
+            [$id]
+        );
     }
 
     public function update(int $id, int $userId, string $type, string $date, string $time, ?string $notes): bool
     {
         return $this->execute(
             'UPDATE appointments
-             SET appointment_type = ?, appointment_date = ?, appointment_time = ?, notes = ?
+             SET appointment_type_id = ?, appointment_date = ?, appointment_time = ?, notes = ?
              WHERE id = ? AND user_id = ?',
-            [$type, $date, $time, $notes, $id, $userId]
+            [$this->appointmentTypeId($type), $date, $time, $notes, $id, $userId]
         );
     }
 
@@ -119,14 +137,15 @@ class Appointment extends BaseModel
 
     public function queue(array $filters = [], int $limit = 20, int $offset = 0): array
     {
-        $sql = 'SELECT a.*, u.fullname AS member_name, u.email AS member_email
+        $sql = 'SELECT a.*, t.name AS appointment_type, u.fullname AS member_name, u.email AS member_email
                 FROM appointments a
+                INNER JOIN appointment_types t ON t.id = a.appointment_type_id
                 LEFT JOIN users u ON u.id = a.user_id
                 WHERE 1=1';
         $params = [];
 
         if (!empty($filters['search'])) {
-            $sql .= ' AND (a.appointment_type LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR a.id LIKE ?)';
+            $sql .= ' AND (t.name LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR a.id LIKE ?)';
             $like = '%' . $filters['search'] . '%';
             $params = array_merge($params, [$like, $like, $like, $like]);
         }
@@ -155,12 +174,13 @@ class Appointment extends BaseModel
     {
         $sql = 'SELECT COUNT(*) AS total
                 FROM appointments a
+                INNER JOIN appointment_types t ON t.id = a.appointment_type_id
                 LEFT JOIN users u ON u.id = a.user_id
                 WHERE 1=1';
         $params = [];
 
         if (!empty($filters['search'])) {
-            $sql .= ' AND (a.appointment_type LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR a.id LIKE ?)';
+            $sql .= ' AND (t.name LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR a.id LIKE ?)';
             $like = '%' . $filters['search'] . '%';
             $params = array_merge($params, [$like, $like, $like, $like]);
         }
@@ -194,5 +214,19 @@ class Appointment extends BaseModel
              GROUP BY DATE_FORMAT(created_at, "%Y-%m")
              ORDER BY month ASC'
         );
+    }
+
+    private function appointmentTypeId(string $name): int
+    {
+        $row = $this->fetch(
+            'SELECT id FROM appointment_types WHERE name = ? AND is_active = 1',
+            [trim($name)]
+        );
+
+        if (!$row) {
+            throw new InvalidArgumentException('Invalid appointment type selected.');
+        }
+
+        return (int) $row['id'];
     }
 }

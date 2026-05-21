@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Payment;
+use App\Models\ReferenceData;
 use App\Models\User;
 use App\Security\Auth;
 
@@ -13,7 +14,10 @@ Auth::requireLogin('/E-Parish/index.php');
 
 $user = (new User($container->pdo()))->find(Auth::userId()) ?? [];
 $paymentModel = new Payment($container->pdo());
+$reference = new ReferenceData($container->pdo());
 $payments = $paymentModel->forUser((int) Auth::userId());
+$paymentMethods = $reference->paymentMethods();
+$paymentCategories = $reference->paymentCategories();
 $paidTotal = $paymentModel->sumByStatus('Verified', (int) Auth::userId());
 $submittedTotal = $paymentModel->sumByStatus('Submitted', (int) Auth::userId());
 $unpaidTotal = $paymentModel->sumByStatus('Unpaid', (int) Auth::userId());
@@ -121,8 +125,22 @@ app_header('Payments', $user);
         <div class="grid gap-4 sm:grid-cols-2">
             <label class="sm:col-span-2"><span class="mb-1 block font-bold">Description</span><input name="description" value="<?= e($prefillDescription) ?>" required placeholder="Example: Baptismal certificate fee" class="w-full rounded-lg border border-slate-200 p-3"></label>
             <label><span class="mb-1 block font-bold">Amount in Peso</span><input name="amount" type="number" min="1" step="0.01" value="<?= $prefillAmount > 0 ? e((string) $prefillAmount) : '' ?>" required placeholder="0.00" class="w-full rounded-lg border border-slate-200 p-3"></label>
-            <label><span class="mb-1 block font-bold">Payment For</span><select name="payable_type" class="w-full rounded-lg border border-slate-200 p-3"><option <?= $prefillCertificateId > 0 ? 'selected' : '' ?>>Certificate</option><option>Appointment</option><option>General</option></select></label>
-            <label><span class="mb-1 block font-bold">Method</span><select name="method" class="w-full rounded-lg border border-slate-200 p-3"><option>GCash</option><option>Cash</option><option>Bank Transfer</option></select></label>
+            <label>
+                <span class="mb-1 block font-bold">Payment For</span>
+                <select name="payable_type" class="w-full rounded-lg border border-slate-200 p-3">
+                    <?php foreach ($paymentCategories as $category): ?>
+                        <option value="<?= e($category['name']) ?>" <?= ($prefillCertificateId > 0 && $category['name'] === 'Certificate') || ($prefillCertificateId === 0 && $category['name'] === 'General') ? 'selected' : '' ?>><?= e($category['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label>
+                <span class="mb-1 block font-bold">Method</span>
+                <select name="method" class="w-full rounded-lg border border-slate-200 p-3">
+                    <?php foreach ($paymentMethods as $method): ?>
+                        <option value="<?= e($method['name']) ?>" <?= $method['name'] === 'GCash' ? 'selected' : '' ?>><?= e($method['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
             <label><span class="mb-1 block font-bold">Reference Number</span><input name="reference_number" class="w-full rounded-lg border border-slate-200 p-3"></label>
             <label class="sm:col-span-2"><span class="mb-1 block font-bold">Proof of Payment</span><input name="proof_file" type="file" accept=".jpg,.jpeg,.png,.pdf" class="w-full rounded-lg border border-slate-200 p-3"></label>
         </div>
@@ -142,7 +160,14 @@ app_header('Payments', $user);
         <?= csrf_field() ?>
         <input type="hidden" name="id" id="upload_payment_id">
         <div class="grid gap-4">
-            <label><span class="mb-1 block font-bold">Method</span><select name="method" id="upload_method" class="w-full rounded-lg border border-slate-200 p-3"><option>GCash</option><option>Cash</option><option>Bank Transfer</option></select></label>
+            <label>
+                <span class="mb-1 block font-bold">Method</span>
+                <select name="method" id="upload_method" class="w-full rounded-lg border border-slate-200 p-3">
+                    <?php foreach ($paymentMethods as $method): ?>
+                        <option value="<?= e($method['name']) ?>"><?= e($method['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
             <label><span class="mb-1 block font-bold">Reference Number</span><input name="reference_number" id="upload_reference_number" class="w-full rounded-lg border border-slate-200 p-3"></label>
             <label><span class="mb-1 block font-bold">Proof of Payment</span><input name="proof_file" type="file" accept=".jpg,.jpeg,.png,.pdf" class="w-full rounded-lg border border-slate-200 p-3"></label>
         </div>

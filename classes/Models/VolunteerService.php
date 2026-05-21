@@ -5,17 +5,18 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Core\BaseModel;
+use InvalidArgumentException;
 
 final class VolunteerService extends BaseModel
 {
     public function create(array $data): bool
     {
         return $this->execute(
-            'INSERT INTO volunteer_service (user_id, activity_name, activity_date, hours_served, notes, status)
+            'INSERT INTO volunteer_service (user_id, volunteer_activity_id, activity_date, hours_served, notes, status)
              VALUES (?, ?, ?, ?, ?, ?)',
             [
                 $data['user_id'],
-                $data['activity_name'],
+                $this->activityId((string) $data['activity_name']),
                 $data['activity_date'],
                 $data['hours_served'],
                 $data['notes'] ?? null,
@@ -27,20 +28,33 @@ final class VolunteerService extends BaseModel
     public function forUser(int $userId): array
     {
         return $this->fetchAll(
-            'SELECT * FROM volunteer_service WHERE user_id = ? ORDER BY activity_date DESC',
+            'SELECT v.*, a.name AS activity_name
+             FROM volunteer_service v
+             INNER JOIN volunteer_activities a ON a.id = v.volunteer_activity_id
+             WHERE v.user_id = ?
+             ORDER BY v.activity_date DESC',
             [$userId]
         );
     }
 
     public function all(): array
     {
-        return $this->fetchAll('SELECT * FROM volunteer_service ORDER BY created_at DESC');
+        return $this->fetchAll(
+            'SELECT v.*, a.name AS activity_name
+             FROM volunteer_service v
+             INNER JOIN volunteer_activities a ON a.id = v.volunteer_activity_id
+             ORDER BY v.created_at DESC'
+        );
     }
 
     public function pending(): array
     {
         return $this->fetchAll(
-            "SELECT * FROM volunteer_service WHERE status = 'Pending' ORDER BY created_at DESC"
+            "SELECT v.*, a.name AS activity_name
+             FROM volunteer_service v
+             INNER JOIN volunteer_activities a ON a.id = v.volunteer_activity_id
+             WHERE v.status = 'Pending'
+             ORDER BY v.created_at DESC"
         );
     }
 
@@ -56,14 +70,15 @@ final class VolunteerService extends BaseModel
 
     public function queue(array $filters = [], int $limit = 20, int $offset = 0): array
     {
-        $sql = 'SELECT v.*, u.fullname AS member_name, u.email AS member_email
+        $sql = 'SELECT v.*, a.name AS activity_name, u.fullname AS member_name, u.email AS member_email
                 FROM volunteer_service v
+                INNER JOIN volunteer_activities a ON a.id = v.volunteer_activity_id
                 LEFT JOIN users u ON u.id = v.user_id
                 WHERE 1=1';
         $params = [];
 
         if (!empty($filters['search'])) {
-            $sql .= ' AND (v.activity_name LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR v.id LIKE ?)';
+            $sql .= ' AND (a.name LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR v.id LIKE ?)';
             $like = '%' . $filters['search'] . '%';
             $params = array_merge($params, [$like, $like, $like, $like]);
         }
@@ -92,12 +107,13 @@ final class VolunteerService extends BaseModel
     {
         $sql = 'SELECT COUNT(*) AS total
                 FROM volunteer_service v
+                INNER JOIN volunteer_activities a ON a.id = v.volunteer_activity_id
                 LEFT JOIN users u ON u.id = v.user_id
                 WHERE 1=1';
         $params = [];
 
         if (!empty($filters['search'])) {
-            $sql .= ' AND (v.activity_name LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR v.id LIKE ?)';
+            $sql .= ' AND (a.name LIKE ? OR u.fullname LIKE ? OR u.email LIKE ? OR v.id LIKE ?)';
             $like = '%' . $filters['search'] . '%';
             $params = array_merge($params, [$like, $like, $like, $like]);
         }
@@ -131,5 +147,19 @@ final class VolunteerService extends BaseModel
              GROUP BY DATE_FORMAT(created_at, "%Y-%m")
              ORDER BY month ASC'
         );
+    }
+
+    private function activityId(string $name): int
+    {
+        $row = $this->fetch(
+            'SELECT id FROM volunteer_activities WHERE name = ? AND is_active = 1',
+            [trim($name)]
+        );
+
+        if (!$row) {
+            throw new InvalidArgumentException('Invalid volunteer activity selected.');
+        }
+
+        return (int) $row['id'];
     }
 }

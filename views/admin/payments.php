@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Payment;
+use App\Models\ReferenceData;
 use App\Models\User;
 use App\Security\Auth;
 
@@ -13,6 +14,7 @@ Auth::requireRole('admin', '/E-Parish/index.php');
 
 $user = (new User($container->pdo()))->find(Auth::userId()) ?? [];
 $model = new Payment($container->pdo());
+$paymentMethods = (new ReferenceData($container->pdo()))->paymentMethods();
 
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 10;
@@ -69,8 +71,8 @@ app_header('Payment Management', $user);
                 </select>
                 <select name="method" class="rounded-xl border border-slate-200 px-4 py-3">
                     <option value="">All Methods</option>
-                    <?php foreach (['Cash', 'GCash', 'Bank Transfer'] as $method): ?>
-                        <option value="<?= e($method) ?>" <?= $filters['method'] === $method ? 'selected' : '' ?>><?= e($method) ?></option>
+                    <?php foreach ($paymentMethods as $method): ?>
+                        <option value="<?= e($method['name']) ?>" <?= $filters['method'] === $method['name'] ? 'selected' : '' ?>><?= e($method['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <input type="date" name="from" value="<?= e($filters['from']) ?>" class="rounded-xl border border-slate-200 px-4 py-3">

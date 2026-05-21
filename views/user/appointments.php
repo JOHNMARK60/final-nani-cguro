@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Appointment;
+use App\Models\ReferenceData;
 use App\Models\User;
 use App\Security\Auth;
 
@@ -13,6 +14,7 @@ Auth::requireLogin('/E-Parish/index.php');
 
 $user = (new User($container->pdo()))->find(Auth::userId()) ?? [];
 $appointments = (new Appointment($container->pdo()))->forUser(Auth::userId());
+$appointmentTypes = (new ReferenceData($container->pdo()))->appointmentTypes();
 $today = date('Y-m-d');
 $upcoming = array_values(array_filter($appointments, static fn ($item) => $item['appointment_date'] >= $today && $item['status'] !== 'Rejected'));
 $history = array_values(array_filter($appointments, static fn ($item) => $item['appointment_date'] < $today || $item['status'] === 'Rejected'));
@@ -80,7 +82,14 @@ app_header('Dashboard', $user);
         <div class="mb-6 flex items-start justify-between"><h3 class="text-3xl font-black text-parish">New Appointment</h3><button type="button" data-close class="text-2xl">&times;</button></div>
         <?= csrf_field() ?>
         <div class="grid gap-4">
-            <label><span class="mb-1 block font-bold">Type</span><select name="appointment_type" required class="w-full rounded-lg border p-3"><option>Mass Intentions</option><option>Counseling Session</option><option>Baptism Service</option><option>Wedding Service</option><option>Funeral Service</option></select></label>
+            <label>
+                <span class="mb-1 block font-bold">Type</span>
+                <select name="appointment_type" required class="w-full rounded-lg border p-3">
+                    <?php foreach ($appointmentTypes as $type): ?>
+                        <option value="<?= e($type['name']) ?>"><?= e($type['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
             <label><span class="mb-1 block font-bold">Date</span><input type="date" name="appointment_date" required class="w-full rounded-lg border p-3"></label>
             <label><span class="mb-1 block font-bold">Time</span><input type="time" name="appointment_time" required class="w-full rounded-lg border p-3"></label>
             <label><span class="mb-1 block font-bold">Notes</span><textarea name="notes" class="w-full rounded-lg border p-3"></textarea></label>

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Certificate;
+use App\Models\ReferenceData;
 use App\Models\User;
 use App\Security\Auth;
 
@@ -14,6 +15,7 @@ Auth::requireLogin('/E-Parish/index.php');
 $user = (new User($container->pdo()))->find(Auth::userId()) ?? [];
 $certificates = new Certificate($container->pdo());
 $requests = $certificates->forUserWithDigital((int) Auth::userId());
+$certificateTypes = (new ReferenceData($container->pdo()))->certificateTypes();
 
 page_start('Certificates');
 sidebar('Certificates');
@@ -99,7 +101,14 @@ app_header('Certificates', $user);
         <div class="mb-6 flex items-start justify-between"><h3 class="text-3xl font-black text-parish">Request Certificate</h3><button type="button" data-close class="text-2xl">&times;</button></div>
         <?= csrf_field() ?>
         <div class="grid gap-4 sm:grid-cols-2">
-            <label><span class="mb-1 block font-bold">Certificate Type</span><select name="certificate_type" id="certificateType" required class="w-full rounded-lg border p-3"><option>Baptismal Certificate</option><option>Confirmation Certificate</option><option>Marriage Certificate</option><option>Death Certificate</option></select></label>
+            <label>
+                <span class="mb-1 block font-bold">Certificate Type</span>
+                <select name="certificate_type" id="certificateType" required class="w-full rounded-lg border p-3">
+                    <?php foreach ($certificateTypes as $type): ?>
+                        <option value="<?= e($type['name']) ?>"><?= e($type['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
             <label><span class="mb-1 block font-bold">Birth Date</span><input type="date" name="birth_date" required class="w-full rounded-lg border p-3"></label>
             <label class="sm:col-span-2"><span class="mb-1 block font-bold">Full Name</span><input name="full_name" required class="w-full rounded-lg border p-3"></label>
             <label class="sm:col-span-2">

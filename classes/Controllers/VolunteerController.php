@@ -18,8 +18,9 @@ final class VolunteerController extends BaseController
         $status = trim($status);
 
         $row = $this->container->pdo()->prepare(
-            'SELECT v.*, u.email, u.fullname
+            'SELECT v.*, a.name AS activity_name, u.email, u.fullname
              FROM volunteer_service v
+             INNER JOIN volunteer_activities a ON a.id = v.volunteer_activity_id
              LEFT JOIN users u ON u.id = v.user_id
              WHERE v.id = ?'
         );

@@ -12,10 +12,18 @@ final class CertificateTest extends TestCase
         $pdo = new PDO('sqlite::memory:');
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->exec(
+            'CREATE TABLE certificate_types (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                is_active INTEGER
+            )'
+        );
+        $pdo->exec("INSERT INTO certificate_types (name, is_active) VALUES ('Baptismal Certificate', 1)");
+        $pdo->exec(
             'CREATE TABLE certificate_requests (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
-                certificate_type TEXT,
+                certificate_type_id INTEGER,
                 full_name TEXT,
                 birth_date TEXT,
                 requester_location TEXT,

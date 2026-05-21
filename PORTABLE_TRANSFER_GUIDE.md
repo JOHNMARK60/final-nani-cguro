@@ -17,12 +17,16 @@ Use this when moving the system to another laptop or cloning it from GitHub.
    - `DEFAULT_ADMIN_*` values for the first admin account
 5. Start Apache/Nginx and MySQL in Laragon/XAMPP.
 6. Open `http://localhost/E-Parish`.
+7. Optional: apply the neat phpMyAdmin Designer layout:
+   ```bash
+   php database/apply_phpmyadmin_designer_layout.php
+   ```
 
 The app creates the database, runs all migrations, and seeds the default admin automatically on first load.
 
 ## Exact Same Data on Another Laptop
 
-A fresh install gives the same tables, not the same records. To transfer the exact same users, requests, payments, certificates, and ERD Designer layout:
+A fresh install gives the same tables, not the same records. To transfer the exact same users, requests, payments, and certificates:
 
 1. In phpMyAdmin on the original laptop, select `eparish_db`.
 2. Click **Export**.
@@ -31,6 +35,7 @@ A fresh install gives the same tables, not the same records. To transfer the exa
 5. On the new laptop, create/import into `eparish_db` using phpMyAdmin **Import**.
 6. Copy the `uploads/` folder if uploaded certificate, profile, and payment proof files must still open.
 7. Copy the `assets/gallery/` folder if gallery images were added outside GitHub.
+8. Run `php database/apply_phpmyadmin_designer_layout.php` if you want the same clean ERD arrangement in phpMyAdmin Designer.
 
 ## What Should Not Be Public
 

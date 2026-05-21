@@ -21,6 +21,7 @@ Use this when moving the system to another laptop or cloning it from GitHub.
    ```bash
    php database/apply_phpmyadmin_designer_layout.php
    ```
+   The layout coordinates are saved in `database/phpmyadmin_designer_layout.json`, so the ERD arrangement is preserved in GitHub.
 
 The app creates the database, runs all migrations, and seeds the default admin automatically on first load.
 

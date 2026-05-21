@@ -8,7 +8,22 @@ use App\Core\Container;
 $container = require dirname(__DIR__) . '/config/app.php';
 $pdo = $container->pdo();
 $dbName = (string) $pdo->query('SELECT DATABASE()')->fetchColumn();
-$pageDescription = 'E-Parish ERD';
+
+$layoutFile = __DIR__ . '/phpmyadmin_designer_layout.json';
+
+if (!is_file($layoutFile)) {
+    fwrite(STDERR, "Designer layout file was not found: {$layoutFile}" . PHP_EOL);
+    exit(1);
+}
+
+$layout = json_decode((string) file_get_contents($layoutFile), true, 512, JSON_THROW_ON_ERROR);
+$pageDescription = (string) ($layout['page_description'] ?? 'E-Parish ERD');
+$coords = $layout['tables'] ?? [];
+
+if (!is_array($coords) || $coords === []) {
+    fwrite(STDERR, 'Designer layout file does not contain table coordinates.' . PHP_EOL);
+    exit(1);
+}
 
 $requiredTables = ['pma__pdf_pages', 'pma__table_coords'];
 $stmt = $pdo->query(
@@ -26,24 +41,6 @@ foreach ($requiredTables as $table) {
         exit(1);
     }
 }
-
-$coords = [
-    'appointment_types' => [40, 40],
-    'appointments' => [680, 40],
-    'appointment_status_history' => [1020, 40],
-    'digital_certificates' => [1020, 240],
-    'certificate_types' => [40, 260],
-    'certificate_requests' => [680, 260],
-    'users' => [360, 300],
-    'certificate_status_history' => [1020, 500],
-    'volunteer_activities' => [40, 540],
-    'volunteer_service' => [680, 540],
-    'payment_methods' => [40, 800],
-    'payment_categories' => [360, 800],
-    'payments' => [680, 800],
-    'admin_audit_logs' => [1020, 800],
-    'migrations' => [360, 1020],
-];
 
 $pdo->beginTransaction();
 
@@ -72,8 +69,10 @@ $upsert = $pdo->prepare(
      ON DUPLICATE KEY UPDATE x = VALUES(x), y = VALUES(y)'
 );
 
-foreach ($coords as $table => [$x, $y]) {
+foreach ($coords as $table => $position) {
     if (isset($existingTables[$table])) {
+        $x = (float) ($position['x'] ?? 0);
+        $y = (float) ($position['y'] ?? 0);
         $upsert->execute([$dbName, $table, $pageNr, $x, $y]);
     }
 }

@@ -1,0 +1,20 @@
+{
+  "page_description": "E-Parish ERD",
+  "tables": {
+    "appointment_types": { "x": 40, "y": 40 },
+    "appointments": { "x": 680, "y": 40 },
+    "appointment_status_history": { "x": 1020, "y": 40 },
+    "digital_certificates": { "x": 1020, "y": 240 },
+    "certificate_types": { "x": 40, "y": 260 },
+    "certificate_requests": { "x": 680, "y": 260 },
+    "users": { "x": 360, "y": 300 },
+    "certificate_status_history": { "x": 1020, "y": 500 },
+    "volunteer_activities": { "x": 40, "y": 540 },
+    "volunteer_service": { "x": 680, "y": 540 },
+    "payment_methods": { "x": 40, "y": 800 },
+    "payment_categories": { "x": 360, "y": 800 },
+    "payments": { "x": 680, "y": 800 },
+    "admin_audit_logs": { "x": 1020, "y": 800 },
+    "migrations": { "x": 360, "y": 1020 }
+  }
+}

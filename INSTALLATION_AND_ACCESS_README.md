@@ -21,7 +21,7 @@ E-Parish is a parish management system that lets members request certificates, b
 
 ### Required environment variables
 These are used by the application:
-- `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS` (DB connection)
+- `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_CHARSET` (DB connection)
 - `DEFAULT_ADMIN_NAME`
 - `DEFAULT_ADMIN_EMAIL`
 - `DEFAULT_ADMIN_PASSWORD`
@@ -56,7 +56,7 @@ Then:
 1. There are two ways to get admin access:
 
    **A) Default seeded admin (recommended for first setup)**
-   - Username: `DEFAULT_ADMIN_EMAIL` (login uses username field; the system accepts either username/email only if you enter the correct username—use the seeded admin credentials as configured)
+   - Username: the part before `@` in `DEFAULT_ADMIN_EMAIL`, for example `admin` if the email is `admin@eparish.local`
    - Password: `DEFAULT_ADMIN_PASSWORD`
 
    **B) Admin self-registration using secret code**

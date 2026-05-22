@@ -125,6 +125,8 @@ E-Parish is a parish management system for members and administrators. It handle
 6. Open the project through Laragon/XAMPP at:
    `http://localhost/E-Parish`
 
+For a transfer to another device, clone the repository, copy `.env.example` to `.env`, then set the local database, admin, SMTP, and GCash values. Required upload/log folders are kept in Git with `.gitkeep` placeholders. To move the exact same records and uploaded files, also import a database backup and privately copy the original `.env` and `uploads/` folder.
+
 ## Notes
 
 - Use the admin invite code only if you want admin self-registration enabled.

@@ -25,6 +25,16 @@ Use this when moving the system to another laptop or cloning it from GitHub.
 
 The app creates the database, runs all migrations, and seeds the default admin automatically on first load.
 
+The repository includes placeholder files for required runtime folders:
+
+- `uploads/`
+- `uploads/certificates/`
+- `uploads/payments/`
+- `uploads/profiles/`
+- `storage/logs/`
+
+Those folders should exist immediately after cloning, even before the first upload or log entry.
+
 ## Exact Same Data on Another Laptop
 
 A fresh install gives the same tables, not the same records. To transfer the exact same users, requests, payments, and certificates:
@@ -38,9 +48,13 @@ A fresh install gives the same tables, not the same records. To transfer the exa
 7. Copy the `assets/gallery/` folder if gallery images were added outside GitHub.
 8. Run `php database/apply_phpmyadmin_designer_layout.php` if you want the same clean ERD arrangement in phpMyAdmin Designer.
 
+If you need the exact same local setup, copy the original `.env` privately to the new laptop too. Do not post it publicly. It can contain the admin invite code, default admin password, SMTP credentials, and the real GCash receiving number.
+
 ## What Should Not Be Public
 
 Do not push real production passwords, SMTP credentials, or private database exports to a public GitHub repository. Use `.env.example` for safe defaults and keep real `.env` values local when possible.
+
+Uploaded certificates, IDs, profile photos, and payment proofs can contain private member information. Keep them in a private backup when transferring exact production data.
 
 ## Quick Check
 

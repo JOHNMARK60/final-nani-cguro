@@ -1,0 +1,30 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime logs
+storage/logs/*.log
+!storage/logs/.gitkeep
+
+# Uploaded runtime files
+uploads/*
+!uploads/.gitkeep
+!uploads/certificates/
+uploads/certificates/*
+!uploads/certificates/.gitkeep
+!uploads/payments/
+uploads/payments/*
+!uploads/payments/.gitkeep
+!uploads/profiles/
+uploads/profiles/*
+!uploads/profiles/.gitkeep
+
+# Dependency and tooling output
+vendor/
+node_modules/
+.phpunit.result.cache
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

@@ -38,6 +38,7 @@ final class UserTest extends TestCase
 
         $this->assertGreaterThan(0, $id);
         $this->assertNotNull($users->attemptLogin('member', 'Strong#123'));
+        $this->assertNotNull($users->attemptLogin('member@example.com', 'Strong#123'));
         $this->assertNull($users->attemptLogin('member', 'wrong-password'));
     }
 }

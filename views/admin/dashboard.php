@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Certificate;
 use App\Models\Appointment;
+use App\Models\CalendarEvent;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\VolunteerService;
@@ -19,6 +20,7 @@ $certificates = new Certificate($container->pdo());
 $appointments = new Appointment($container->pdo());
 $payments = new Payment($container->pdo());
 $volunteers = new VolunteerService($container->pdo());
+$calendar = new CalendarEvent($container->pdo());
 $user = $users->find(Auth::userId()) ?? [];
 $recent = $certificates->recent(10);
 $recentAppointments = $appointments->recent(10);
@@ -27,6 +29,24 @@ $pendingVolunteers = $volunteers->pending();
 $certificateSeries = $certificates->monthlyCounts();
 $appointmentSeries = $appointments->monthlyCounts();
 $volunteerSeries = $volunteers->monthlyCounts();
+$calendarMonth = preg_match('/^\d{4}-\d{2}$/', (string) ($_GET['calendar_month'] ?? '')) ? (string) $_GET['calendar_month'] : date('Y-m');
+$calendarEvents = array_merge(
+    $appointments->calendarMonth(null, $calendarMonth),
+    $calendar->month($calendarMonth, false)
+);
+usort($calendarEvents, static fn(array $a, array $b): int => strcmp(
+    (string) ($a['appointment_date'] . ' ' . ($a['appointment_time'] ?? '')),
+    (string) ($b['appointment_date'] . ' ' . ($b['appointment_time'] ?? ''))
+));
+$paymentReport = array_map(
+    fn(string $status): array => [
+        'status' => $status,
+        'count' => $payments->countByStatus($status),
+        'total' => $payments->sumByStatus($status),
+    ],
+    ['Unpaid', 'Submitted', 'Verified', 'Rejected']
+);
+$recentPayments = $payments->recent(6);
 
 $months = [];
 $series = [
@@ -81,6 +101,52 @@ app_header('Admin Dashboard', $user);
             </div>
             <div class="mt-6 h-80">
                 <canvas id="activityChart"></canvas>
+            </div>
+        </section>
+
+        <section class="mt-10 rounded-xl bg-white p-8 shadow-soft">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-3xl font-black text-parish">Parish Calendar</h3>
+                </div>
+                <a href="appointments.php?calendar_month=<?= e($calendarMonth) ?>" class="rounded-lg bg-parish px-5 py-3 font-bold text-white">Manage Calendar</a>
+            </div>
+            <?= dashboard_calendar_grid($calendarEvents, $calendarMonth, 'dashboard.php', 'appointments.php', true) ?>
+        </section>
+
+        <section class="mt-10 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <div class="rounded-xl bg-white p-8 shadow-soft">
+                <h3 class="text-3xl font-black text-parish">Payment Reports</h3>
+                <div class="mt-6 space-y-3">
+                    <?php foreach ($paymentReport as $row): ?>
+                        <div class="flex items-center justify-between rounded-lg bg-slate-50 p-4">
+                            <div>
+                                <div class="font-black"><?= e($row['status']) ?></div>
+                                <div class="text-sm text-slate-500"><?= (int) $row['count'] ?> records</div>
+                            </div>
+                            <div class="font-black text-green-700"><?= e(peso($row['total'])) ?></div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <div class="overflow-hidden rounded-xl bg-white shadow-soft">
+                <div class="border-b border-slate-200 p-8"><h3 class="text-3xl font-black text-parish">Recent Payments</h3></div>
+                <table class="w-full text-left">
+                    <thead class="bg-slate-100 text-sm uppercase tracking-widest text-slate-600"><tr><th class="p-5">Payment</th><th>Member</th><th>Amount</th><th>Status</th></tr></thead>
+                    <tbody>
+                    <?php if ($recentPayments === []): ?>
+                        <tr><td colspan="4" class="p-10 text-center text-slate-400">No payment records found.</td></tr>
+                    <?php endif; ?>
+                    <?php foreach ($recentPayments as $payment): ?>
+                        <tr class="border-t">
+                            <td class="p-5 font-semibold"><?= e($payment['description']) ?><div class="text-sm text-slate-500"><?= e($payment['method']) ?></div></td>
+                            <td><?= e($payment['member_name'] ?? '-') ?></td>
+                            <td class="font-bold"><?= e(peso($payment['amount'])) ?></td>
+                            <td><?= status_badge((string) $payment['status']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
         </section>
 

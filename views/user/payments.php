@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Payment;
 use App\Models\ReferenceData;
 use App\Models\User;
+use App\Core\Env;
 use App\Security\Auth;
 
 $container = require __DIR__ . '/../../config/app.php';
@@ -24,6 +25,8 @@ $unpaidTotal = $paymentModel->sumByStatus('Unpaid', (int) Auth::userId());
 $prefillCertificateId = (int) ($_GET['certificate_id'] ?? 0);
 $prefillDescription = trim((string) ($_GET['description'] ?? ''));
 $prefillAmount = (float) ($_GET['amount'] ?? 0);
+$gcashName = Env::get('GCASH_MERCHANT_NAME', 'Parish Office');
+$gcashNumber = Env::get('GCASH_MERCHANT_NUMBER', '');
 
 page_start('Payments');
 sidebar('Payments');
@@ -39,7 +42,7 @@ app_header('Payments', $user);
                 <p class="mt-2 text-base text-slate-700 sm:text-xl">Monitor payments, upload proof, and print receipts in Philippine Peso.</p>
             </div>
             <button data-open="paymentModal" class="inline-flex items-center justify-center rounded-xl bg-parish px-6 py-3 font-bold text-white shadow-soft transition hover:bg-parishDark">
-                <i class="bi bi-plus-lg mr-2"></i>Submit Payment
+                <i class="bi bi-plus-lg mr-2"></i>Create Payment
             </button>
         </div>
 
@@ -98,7 +101,7 @@ app_header('Payments', $user);
                                     <?php endif; ?>
                                     <a class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700" href="payment_invoice.php?id=<?= (int) $payment['id'] ?>">Receipt</a>
                                     <?php if ($payment['status'] !== 'Verified'): ?>
-                                        <button class="rounded-lg bg-parish px-3 py-2 text-sm font-semibold text-white" data-edit-payment='<?= e(json_encode($payment, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)) ?>'>Update</button>
+                                        <button class="rounded-lg bg-parish px-3 py-2 text-sm font-semibold text-white" data-edit-payment='<?= e(json_encode($payment, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)) ?>'><?= $payment['status'] === 'Submitted' ? 'Update Proof' : 'Pay / Upload Proof' ?></button>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -112,11 +115,11 @@ app_header('Payments', $user);
 </main>
 
 <div id="paymentModal" class="fixed inset-0 z-50 <?= $prefillCertificateId > 0 ? 'flex' : 'hidden' ?> items-center justify-center bg-slate-950/50 p-4">
-    <form method="POST" action="../../controllers/users/payments/create.php" enctype="multipart/form-data" class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-soft sm:p-8">
+    <form method="POST" action="../../controllers/users/payments/create.php" class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-soft sm:p-8">
         <div class="mb-6 flex items-start justify-between">
             <div>
-                <h3 class="text-3xl font-black text-parish">Submit Payment</h3>
-                <p class="text-slate-500">Amounts are recorded in Philippine Peso.</p>
+                <h3 class="text-3xl font-black text-parish">Create Payment</h3>
+                <p class="text-slate-500">Create the bill first. Upload proof after you pay.</p>
             </div>
             <button type="button" data-close class="text-2xl text-slate-400">&times;</button>
         </div>
@@ -141,10 +144,15 @@ app_header('Payments', $user);
                     <?php endforeach; ?>
                 </select>
             </label>
-            <label><span class="mb-1 block font-bold">Reference Number</span><input name="reference_number" class="w-full rounded-lg border border-slate-200 p-3"></label>
-            <label class="sm:col-span-2"><span class="mb-1 block font-bold">Proof of Payment</span><input name="proof_file" type="file" accept=".jpg,.jpeg,.png,.pdf" class="w-full rounded-lg border border-slate-200 p-3"></label>
         </div>
-        <button class="mt-6 w-full rounded-lg bg-parish py-3 font-bold text-white">Save Payment</button>
+        <div class="mt-5 rounded-lg bg-green-50 p-4 text-sm font-semibold text-green-700">
+            <?php if ($gcashNumber !== ''): ?>
+                Pay through GCash to <?= e($gcashName) ?> at <?= e($gcashNumber) ?>, then open this payment and upload your reference number and proof.
+            <?php else: ?>
+                GCash receiving number is not configured yet. Add GCASH_MERCHANT_NUMBER in .env before accepting live GCash payments.
+            <?php endif; ?>
+        </div>
+        <button class="mt-6 w-full rounded-lg bg-parish py-3 font-bold text-white">Create Payment Record</button>
     </form>
 </div>
 
@@ -159,6 +167,13 @@ app_header('Payments', $user);
         </div>
         <?= csrf_field() ?>
         <input type="hidden" name="id" id="upload_payment_id">
+        <div class="mb-5 rounded-lg bg-green-50 p-4 text-sm font-semibold text-green-700">
+            <?php if ($gcashNumber !== ''): ?>
+                GCash: send payment to <?= e($gcashName) ?> at <?= e($gcashNumber) ?>, then enter the reference number from your receipt.
+            <?php else: ?>
+                GCash receiving number is not configured yet. Ask the parish office for the official number before paying.
+            <?php endif; ?>
+        </div>
         <div class="grid gap-4">
             <label>
                 <span class="mb-1 block font-bold">Method</span>

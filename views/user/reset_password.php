@@ -15,8 +15,24 @@ page_start('Reset Password');
         <div class="mt-6"><?php flash_messages(); ?></div>
         <?= csrf_field() ?>
         <input type="hidden" name="token" value="<?= e((string) $token) ?>">
-        <label class="mt-4 block"><span class="mb-1 block font-bold">New Password</span><input type="password" name="password" required class="w-full rounded-lg border p-3"></label>
-        <label class="mt-4 block"><span class="mb-1 block font-bold">Confirm Password</span><input type="password" name="confirm_password" required class="w-full rounded-lg border p-3"></label>
+        <div class="mt-4">
+            <label for="reset_password" class="mb-1 block font-bold">New Password</label>
+            <div class="relative" data-password-field>
+                <input id="reset_password" type="password" name="password" required class="w-full rounded-lg border p-3 pr-12">
+                <button type="button" data-password-toggle class="absolute inset-y-0 right-0 grid w-12 place-items-center text-slate-400 transition hover:text-parish focus:outline-none" aria-label="Show password" aria-pressed="false" title="Show password">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+        </div>
+        <div class="mt-4">
+            <label for="reset_confirm_password" class="mb-1 block font-bold">Confirm Password</label>
+            <div class="relative" data-password-field>
+                <input id="reset_confirm_password" type="password" name="confirm_password" required class="w-full rounded-lg border p-3 pr-12">
+                <button type="button" data-password-toggle class="absolute inset-y-0 right-0 grid w-12 place-items-center text-slate-400 transition hover:text-parish focus:outline-none" aria-label="Show password" aria-pressed="false" title="Show password">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+        </div>
         <button class="mt-6 w-full rounded-lg bg-parish py-3 font-bold text-white">Update Password</button>
     </form>
 </main>

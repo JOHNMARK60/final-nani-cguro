@@ -86,7 +86,16 @@ app_header('Admin Management', $user);
             <label class="sm:col-span-2"><span class="mb-1 block text-sm font-semibold text-slate-600">Full Name</span><input name="fullname" value="<?= e((string) old('fullname')) ?>" class="w-full rounded-xl border border-slate-200 px-4 py-3"><?php if ($msg = field_error('fullname')): ?><span class="mt-1 block text-sm text-rose-600"><?= e($msg) ?></span><?php endif; ?></label>
             <label><span class="mb-1 block text-sm font-semibold text-slate-600">Email</span><input name="email" type="email" value="<?= e((string) old('email')) ?>" class="w-full rounded-xl border border-slate-200 px-4 py-3"><?php if ($msg = field_error('email')): ?><span class="mt-1 block text-sm text-rose-600"><?= e($msg) ?></span><?php endif; ?></label>
             <label><span class="mb-1 block text-sm font-semibold text-slate-600">Username</span><input name="username" value="<?= e((string) old('username')) ?>" class="w-full rounded-xl border border-slate-200 px-4 py-3"><?php if ($msg = field_error('username')): ?><span class="mt-1 block text-sm text-rose-600"><?= e($msg) ?></span><?php endif; ?></label>
-            <label><span class="mb-1 block text-sm font-semibold text-slate-600">Password</span><input name="password" type="password" class="w-full rounded-xl border border-slate-200 px-4 py-3"><?php if ($msg = field_error('password')): ?><span class="mt-1 block text-sm text-rose-600"><?= e($msg) ?></span><?php endif; ?></label>
+            <div>
+                <label for="create_admin_password" class="mb-1 block text-sm font-semibold text-slate-600">Password</label>
+                <div class="relative" data-password-field>
+                    <input id="create_admin_password" name="password" type="password" class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12">
+                    <button type="button" data-password-toggle class="absolute inset-y-0 right-0 grid w-12 place-items-center text-slate-400 transition hover:text-parish focus:outline-none" aria-label="Show password" aria-pressed="false" title="Show password">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <?php if ($msg = field_error('password')): ?><span class="mt-1 block text-sm text-rose-600"><?= e($msg) ?></span><?php endif; ?>
+            </div>
         </div>
         <button class="mt-6 rounded-xl bg-parish px-6 py-3 font-semibold text-white">Create Admin</button>
     </form>
@@ -112,11 +121,16 @@ app_header('Admin Management', $user);
         <div class="mb-6 flex items-start justify-between"><h3 class="text-3xl font-bold text-slate-950">Reset Password</h3><button type="button" data-close class="text-2xl">&times;</button></div>
         <?= csrf_field() ?>
         <input type="hidden" name="id" id="reset_id">
-        <label class="block">
-            <span class="mb-1 block text-sm font-semibold text-slate-600">New Password</span>
-            <input name="password" type="password" class="w-full rounded-xl border border-slate-200 px-4 py-3">
+        <div>
+            <label for="reset_admin_password" class="mb-1 block text-sm font-semibold text-slate-600">New Password</label>
+            <div class="relative" data-password-field>
+                <input id="reset_admin_password" name="password" type="password" class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12">
+                <button type="button" data-password-toggle class="absolute inset-y-0 right-0 grid w-12 place-items-center text-slate-400 transition hover:text-parish focus:outline-none" aria-label="Show password" aria-pressed="false" title="Show password">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
             <?php if ($msg = field_error('password')): ?><span class="mt-1 block text-sm text-rose-600"><?= e($msg) ?></span><?php endif; ?>
-        </label>
+        </div>
         <button class="mt-6 rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white">Reset Password</button>
     </form>
 </div>

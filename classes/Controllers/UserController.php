@@ -76,11 +76,12 @@ final class UserController extends BaseController
                 $this->redirectWithErrors($validator->errors(), $data, '../../views/user/login.php');
             }
 
-            $user = $this->users()->attemptLogin(trim($data['username']), (string) $data['password']);
+            $login = trim($data['username']);
+            $user = $this->users()->attemptLogin($login, (string) $data['password']);
 
             if (!$user) {
-                $this->container->audit()->log('login_failed', 'user', null, 'Failed login attempt for ' . trim($data['username']));
-                $this->redirectWithErrors(['password' => 'Invalid username or password.'], $data, '../../views/user/login.php');
+                $this->container->audit()->log('login_failed', 'user', null, 'Failed login attempt for ' . $login);
+                $this->redirectWithErrors(['password' => 'Invalid email/username or password.'], $data, '../../views/user/login.php');
             }
 
             session_regenerate_id(true);

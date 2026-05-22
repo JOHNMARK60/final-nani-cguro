@@ -54,7 +54,7 @@ app_header('Certificates', $user);
             <?php else: ?>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
-                        <thead class="bg-slate-100 text-sm uppercase tracking-widest text-slate-600"><tr><th class="p-5">Type</th><th>Name</th><th>Delivery</th><th>Status</th><th>Date</th><th>Certificate</th></tr></thead>
+                        <thead class="bg-slate-100 text-sm uppercase tracking-widest text-slate-600"><tr><th class="p-5">Type</th><th>Name</th><th>Delivery</th><th>Status</th><th>Date</th><th>Certificate</th><th>Action</th></tr></thead>
                         <tbody>
                         <?php foreach ($requests as $row): ?>
                             <?php
@@ -86,6 +86,20 @@ app_header('Certificates', $user);
                                         <a class="rounded-lg bg-green-600 px-3 py-2 text-sm font-bold text-white" href="certificate_view.php?id=<?= (int) $row['id'] ?>">View E-Certificate</a>
                                     <?php endif; ?>
                                 </td>
+                                <td class="p-5">
+                                    <?php if ($row['status'] === 'Pending'): ?>
+                                        <div class="flex flex-wrap gap-2">
+                                            <button class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700" data-edit-certificate='<?= e(json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)) ?>'>Edit</button>
+                                            <form method="POST" action="../../controllers/users/certificates/delete.php" data-confirm="Delete this certificate request?" data-confirm-text="Only this pending request will be removed." data-confirm-icon="warning" data-confirm-button="Delete">
+                                                <?= csrf_field() ?>
+                                                <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+                                                <button class="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white">Delete</button>
+                                            </form>
+                                        </div>
+                                    <?php else: ?>
+                                        <span class="text-sm font-semibold text-slate-400">Locked</span>
+                                    <?php endif; ?>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -97,7 +111,7 @@ app_header('Certificates', $user);
 </main>
 
 <div id="requestModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/50 p-4">
-    <form method="POST" action="../../controllers/users/certificates/request_certificate.php" enctype="multipart/form-data" class="w-full max-w-2xl rounded-2xl bg-white p-8 shadow-soft">
+    <form method="POST" action="../../controllers/users/certificates/request_certificate.php" enctype="multipart/form-data" class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-8 shadow-soft">
         <div class="mb-6 flex items-start justify-between"><h3 class="text-3xl font-black text-parish">Request Certificate</h3><button type="button" data-close class="text-2xl">&times;</button></div>
         <?= csrf_field() ?>
         <div class="grid gap-4 sm:grid-cols-2">
@@ -131,9 +145,51 @@ app_header('Certificates', $user);
         <button class="mt-6 w-full rounded-lg bg-parish py-3 font-bold text-white">Submit Request</button>
     </form>
 </div>
+
+<div id="editCertificateModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/50 p-4">
+    <form method="POST" action="../../controllers/users/certificates/update.php" enctype="multipart/form-data" class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-8 shadow-soft">
+        <div class="mb-6 flex items-start justify-between"><h3 class="text-3xl font-black text-parish">Edit Certificate Request</h3><button type="button" data-close class="text-2xl">&times;</button></div>
+        <?= csrf_field() ?>
+        <input type="hidden" name="id" id="edit_certificate_id">
+        <div class="grid gap-4 sm:grid-cols-2">
+            <label>
+                <span class="mb-1 block font-bold">Certificate Type</span>
+                <select name="certificate_type" id="edit_certificate_type" required class="w-full rounded-lg border p-3">
+                    <?php foreach ($certificateTypes as $type): ?>
+                        <option value="<?= e($type['name']) ?>"><?= e($type['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label><span class="mb-1 block font-bold">Birth Date</span><input type="date" name="birth_date" id="edit_birth_date" required class="w-full rounded-lg border p-3"></label>
+            <label class="sm:col-span-2"><span class="mb-1 block font-bold">Full Name</span><input name="full_name" id="edit_full_name" required class="w-full rounded-lg border p-3"></label>
+            <label class="sm:col-span-2">
+                <span class="mb-1 block font-bold">Your Location</span>
+                <select name="requester_location" id="edit_requester_location" class="w-full rounded-lg border p-3">
+                    <option value="Near Parish">Near the parish - walk-in pickup is recommended</option>
+                    <option value="Far from Parish">Far from the parish - e-certificate is recommended</option>
+                </select>
+            </label>
+            <label><span class="mb-1 block font-bold">Supporting Document</span><input type="file" name="baptismal_file" accept=".jpg,.jpeg,.png,.pdf" class="w-full rounded-lg border p-3"><span class="mt-1 block text-xs font-semibold text-slate-500">Leave blank to keep the current file.</span></label>
+            <label><span class="mb-1 block font-bold">Valid ID</span><input type="file" name="id_file" accept=".jpg,.jpeg,.png,.pdf" class="w-full rounded-lg border p-3"><span class="mt-1 block text-xs font-semibold text-slate-500">Leave blank to keep the current file.</span></label>
+            <label class="sm:col-span-2"><span class="mb-1 block font-bold">Notes</span><textarea name="notes" id="edit_notes" class="w-full rounded-lg border p-3"></textarea></label>
+        </div>
+        <button class="mt-6 w-full rounded-lg bg-parish py-3 font-bold text-white">Save Changes</button>
+    </form>
+</div>
 <script>
-document.querySelector('[data-open]')?.addEventListener('click', e => document.getElementById(e.currentTarget.dataset.open).classList.replace('hidden', 'flex'));
+document.querySelectorAll('[data-open]').forEach(button => button.addEventListener('click', e => document.getElementById(e.currentTarget.dataset.open).classList.replace('hidden', 'flex')));
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('.fixed').classList.replace('flex', 'hidden')));
+document.querySelectorAll('[data-edit-certificate]').forEach(button => button.addEventListener('click', () => {
+    const request = JSON.parse(button.dataset.editCertificate);
+    document.getElementById('edit_certificate_id').value = request.id;
+    document.getElementById('edit_certificate_type').value = request.certificate_type;
+    document.getElementById('edit_birth_date').value = request.birth_date || '';
+    document.getElementById('edit_full_name').value = request.full_name || '';
+    document.getElementById('edit_requester_location').value = request.requester_location || 'Near Parish';
+    document.getElementById('edit_notes').value = request.notes || '';
+    document.getElementById('editCertificateModal').classList.remove('hidden');
+    document.getElementById('editCertificateModal').classList.add('flex');
+}));
 const requesterLocation = document.getElementById('requesterLocation');
 const deliveryHint = document.getElementById('deliveryHint');
 const certificateType = document.getElementById('certificateType');

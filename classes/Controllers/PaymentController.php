@@ -31,7 +31,6 @@ final class PaymentController extends BaseController
             $amount = (float) ($data['amount'] ?? 0);
             $method = trim((string) ($data['method'] ?? 'GCash'));
             $payableType = trim((string) ($data['payable_type'] ?? 'General'));
-            $referenceNumber = trim((string) ($data['reference_number'] ?? ''));
 
             if ($description === '' || $amount <= 0) {
                 $this->backWith('error', 'Please enter a payment description and valid Peso amount.', '/E-Parish/views/user/payments.php');
@@ -41,18 +40,6 @@ final class PaymentController extends BaseController
                 $this->backWith('error', 'Invalid payment option selected.', '/E-Parish/views/user/payments.php');
             }
 
-            $proofFile = (new UploadService())->store(
-                $files['proof_file'] ?? [],
-                'payments',
-                ['jpg', 'jpeg', 'png', 'pdf']
-            );
-
-            if ($method !== 'Cash' && $proofFile === null && $referenceNumber === '') {
-                $this->backWith('error', 'Please upload proof or enter a reference number for non-cash payments.', '/E-Parish/views/user/payments.php');
-            }
-
-            $status = $method === 'Cash' && $proofFile === null && $referenceNumber === '' ? 'Unpaid' : 'Submitted';
-
             $id = $this->payments()->create([
                 'user_id' => Auth::userId(),
                 'payable_type' => $payableType,
@@ -60,13 +47,13 @@ final class PaymentController extends BaseController
                 'description' => $description,
                 'amount' => $amount,
                 'method' => $method,
-                'reference_number' => $referenceNumber !== '' ? $referenceNumber : null,
-                'proof_file' => $proofFile,
-                'status' => $status,
+                'reference_number' => null,
+                'proof_file' => null,
+                'status' => 'Unpaid',
             ]);
 
-            $this->container->audit()->log('payment_create', 'payment', $id, 'Payment submitted in PHP/Peso.');
-            $this->backWith('success', 'Payment saved in Philippine Peso.', '/E-Parish/views/user/payments.php');
+            $this->container->audit()->log('payment_create', 'payment', $id, 'Payment record created in PHP/Peso.');
+            $this->backWith('success', 'Payment record created. Pay first, then upload your reference number and proof.', '/E-Parish/views/user/payments.php');
         } catch (\Throwable $e) {
             $this->container->logger()->error('Payment submission failed', ['error' => $e->getMessage()]);
             $this->backWith('error', $e->getMessage(), '/E-Parish/views/user/payments.php');
@@ -92,6 +79,10 @@ final class PaymentController extends BaseController
 
             if (!$payment) {
                 $this->backWith('error', 'Payment record not found.', '/E-Parish/views/user/payments.php');
+            }
+
+            if ($payment['status'] === 'Verified') {
+                $this->backWith('error', 'Verified payments can no longer be changed.', '/E-Parish/views/user/payments.php');
             }
 
             $proofFile = (new UploadService())->store(
@@ -137,6 +128,10 @@ final class PaymentController extends BaseController
 
             if (!$payment) {
                 $this->backWith('error', 'Payment record not found.', '/E-Parish/views/admin/payments.php');
+            }
+
+            if (in_array($status, ['Verified', 'Rejected'], true) && $payment['status'] !== 'Submitted') {
+                $this->backWith('error', 'Only submitted payments can be verified or rejected.', '/E-Parish/views/admin/payments.php');
             }
 
             $this->payments()->updateStatus($id, $status, Auth::userId(), $remarks !== '' ? $remarks : null);

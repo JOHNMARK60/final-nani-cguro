@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\BaseController;
 use App\Models\Certificate;
+use App\Models\Priest;
 use App\Models\User;
 use App\Security\Auth;
 use App\Services\MailTemplate;
@@ -33,7 +34,12 @@ final class AdminCertificateController extends BaseController
                 $this->backWith('error', 'Certificate request ID is missing.', '/E-Parish/views/admin/certificates.php');
             }
 
-            $row = $this->container->pdo()->prepare('SELECT * FROM certificate_requests WHERE id = ?');
+            $row = $this->container->pdo()->prepare(
+                'SELECT c.*, u.email AS member_email, u.fullname AS member_name
+                 FROM certificate_requests c
+                 LEFT JOIN users u ON u.id = c.user_id
+                 WHERE c.id = ?'
+            );
             $row->execute([$id]);
             $request = $row->fetch();
 
@@ -46,6 +52,11 @@ final class AdminCertificateController extends BaseController
             }
 
             $previous = $request['status'];
+
+            if (in_array($status, ['Approved', 'Rejected'], true) && $previous !== 'Pending') {
+                $this->backWith('error', 'Only pending certificate requests can be approved or rejected.', '/E-Parish/views/admin/certificates.php');
+            }
+
             $this->certificates()->updateStatus($id, $status);
             $this->certificates()->history($id, $previous, $status, Auth::userId(), $remarks !== '' ? $remarks : null);
             $this->container->audit()->log(
@@ -86,6 +97,10 @@ final class AdminCertificateController extends BaseController
                 $this->backWith('error', 'Certificate request not found.', '/E-Parish/views/admin/certificates.php');
             }
 
+            if ($request['status'] !== 'Approved') {
+                $this->backWith('error', 'Approve the certificate request before issuing it.', '/E-Parish/views/admin/certificates.php');
+            }
+
             $deliveryMode = trim((string) ($data['delivery_mode'] ?? $request['delivery_option'] ?? 'Walk-in Pickup'));
 
             if (!in_array($deliveryMode, self::DELIVERY_MODES, true)) {
@@ -105,6 +120,12 @@ final class AdminCertificateController extends BaseController
                 $this->backWith('error', 'Recipient name is required.', '/E-Parish/views/admin/certificates.php');
             }
 
+            $officiant = trim((string) ($data['officiant'] ?? ''));
+
+            if ($officiant === '') {
+                $officiant = (new Priest($this->container->pdo()))->defaultName();
+            }
+
             $digitalId = $this->certificates()->issueDigital([
                 'certificate_request_id' => $id,
                 'certificate_number' => $certificateNumber,
@@ -117,11 +138,11 @@ final class AdminCertificateController extends BaseController
                 'birth_date' => trim((string) ($data['birth_date'] ?? $request['birth_date'] ?? '')) ?: null,
                 'event_date' => trim((string) ($data['event_date'] ?? '')) ?: null,
                 'event_place' => trim((string) ($data['event_place'] ?? '')),
-                'officiant' => trim((string) ($data['officiant'] ?? '')),
+                'officiant' => $officiant,
                 'sponsors_witnesses' => trim((string) ($data['sponsors_witnesses'] ?? '')),
                 'book_no' => trim((string) ($data['book_no'] ?? '')),
                 'page_no' => trim((string) ($data['page_no'] ?? '')),
-                'remarks' => trim((string) ($data['remarks'] ?? '')),
+                'remarks' => trim((string) ($data['remarks'] ?? 'as appears from the Roman Catholic parish sacramental register.')),
                 'qr_reference' => hash('sha256', $certificateNumber . '|' . $id . '|' . ($_ENV['APP_KEY'] ?? 'e-parish')),
                 'issued_by' => Auth::userId(),
             ]);

@@ -25,9 +25,10 @@ final class AdminAppointmentController extends BaseController
             $id = (int) ($data['id'] ?? 0);
             $status = trim($status);
             $remarks = trim((string) ($data['remarks'] ?? ''));
+            $redirect = $this->adminRedirect((string) ($data['redirect'] ?? '/E-Parish/views/admin/dashboard.php'));
 
             if ($id <= 0) {
-                $this->backWith('error', 'Appointment ID is missing.', '/E-Parish/views/admin/dashboard.php');
+                $this->backWith('error', 'Appointment ID is missing.', $redirect);
             }
 
             $row = $this->container->pdo()->prepare(
@@ -40,14 +41,19 @@ final class AdminAppointmentController extends BaseController
             $request = $row->fetch();
 
             if (!$request) {
-                $this->backWith('error', 'Appointment request not found.', '/E-Parish/views/admin/dashboard.php');
+                $this->backWith('error', 'Appointment request not found.', $redirect);
             }
 
             if (!in_array($status, ['Approved', 'Rejected', 'Pending', 'Confirmed'], true)) {
-                $this->backWith('error', 'Invalid appointment status.', '/E-Parish/views/admin/dashboard.php');
+                $this->backWith('error', 'Invalid appointment status.', $redirect);
             }
 
             $previous = (string) $request['status'];
+
+            if (in_array($status, ['Approved', 'Rejected'], true) && $previous !== 'Pending') {
+                $this->backWith('error', 'Only pending appointments can be approved or rejected.', $redirect);
+            }
+
             $this->appointments()->updateStatus($id, $status);
             $this->appointments()->history($id, $previous, $status, Auth::userId(), $remarks !== '' ? $remarks : null);
             $this->container->audit()->log(
@@ -67,10 +73,17 @@ final class AdminAppointmentController extends BaseController
                 $this->container->mailer()->send((string) $request['email'], 'E-Parish Appointment Update', $body);
             }
 
-            $this->backWith('success', 'Appointment updated.', '/E-Parish/views/admin/dashboard.php');
+            $this->backWith('success', 'Appointment updated.', $redirect);
         } catch (\Throwable $e) {
             $this->container->logger()->error('Admin appointment update failed', ['error' => $e->getMessage()]);
-            $this->backWith('error', $e->getMessage(), '/E-Parish/views/admin/dashboard.php');
+            $this->backWith('error', $e->getMessage(), $redirect ?? '/E-Parish/views/admin/dashboard.php');
         }
+    }
+
+    private function adminRedirect(string $path): string
+    {
+        return str_starts_with($path, '/E-Parish/views/admin/')
+            ? $path
+            : '/E-Parish/views/admin/dashboard.php';
     }
 }

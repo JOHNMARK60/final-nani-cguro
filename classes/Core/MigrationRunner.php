@@ -35,7 +35,7 @@ final class MigrationRunner
             try {
                 $pdo->beginTransaction();
                 $migration($pdo);
-                $stmt = $pdo->prepare('INSERT INTO migrations (migration) VALUES (?)');
+                $stmt = $pdo->prepare('INSERT IGNORE INTO migrations (migration) VALUES (?)');
                 $stmt->execute([$name]);
 
                 if ($pdo->inTransaction()) {

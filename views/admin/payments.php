@@ -119,20 +119,24 @@ app_header('Payment Management', $user);
                                 <?php endif; ?>
                             </td>
                             <td class="p-5">
-                                <div class="grid gap-2">
-                                    <form method="POST" action="../../controllers/admin/payments/verify.php" data-confirm="Verify this payment?" data-confirm-text="This will count the amount as verified Peso revenue." data-confirm-button="Verify">
-                                        <?= csrf_field() ?>
-                                        <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
-                                        <input name="remarks" class="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Optional remarks">
-                                        <button class="w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white">Verify</button>
-                                    </form>
-                                    <form method="POST" action="../../controllers/admin/payments/reject.php" data-confirm="Reject this payment?" data-confirm-text="The member will see the rejection remarks." data-confirm-icon="warning" data-confirm-button="Reject">
-                                        <?= csrf_field() ?>
-                                        <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
-                                        <input name="remarks" class="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Reason if rejected">
-                                        <button class="w-full rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white">Reject</button>
-                                    </form>
-                                </div>
+                                <?php if ($row['status'] === 'Submitted'): ?>
+                                    <div class="grid gap-2">
+                                        <form method="POST" action="../../controllers/admin/payments/verify.php" data-confirm="Verify this payment?" data-confirm-text="This will count the amount as verified Peso revenue." data-confirm-button="Verify">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+                                            <input name="remarks" class="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Optional remarks">
+                                            <button class="w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white">Verify</button>
+                                        </form>
+                                        <form method="POST" action="../../controllers/admin/payments/reject.php" data-confirm="Reject this payment?" data-confirm-text="The member will see the rejection remarks." data-confirm-icon="warning" data-confirm-button="Reject">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+                                            <input name="remarks" class="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Reason if rejected">
+                                            <button class="w-full rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white">Reject</button>
+                                        </form>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="text-sm font-semibold text-slate-400">No action</span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>

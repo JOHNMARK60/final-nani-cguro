@@ -114,15 +114,20 @@ page_start('Welcome');
         </div>
         <?= csrf_field() ?>
         <label class="mb-4 block">
-            <span class="mb-1 block text-sm font-semibold text-slate-600">Username</span>
+            <span class="mb-1 block text-sm font-semibold text-slate-600">Email or Username</span>
             <input name="username" value="<?= e((string) old('username')) ?>" required class="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-parish">
             <?php if ($msg = field_error('username')): ?><span class="mt-1 block text-sm text-rose-600"><?= e($msg) ?></span><?php endif; ?>
         </label>
-        <label class="mb-6 block">
-            <span class="mb-1 block text-sm font-semibold text-slate-600">Password</span>
-            <input name="password" type="password" required class="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-parish">
+        <div class="mb-6">
+            <label for="login_password" class="mb-1 block text-sm font-semibold text-slate-600">Password</label>
+            <div class="relative" data-password-field>
+                <input id="login_password" name="password" type="password" required class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 outline-none transition focus:border-parish">
+                <button type="button" data-password-toggle class="absolute inset-y-0 right-0 grid w-12 place-items-center text-slate-400 transition hover:text-parish focus:outline-none" aria-label="Show password" aria-pressed="false" title="Show password">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
             <?php if ($msg = field_error('password')): ?><span class="mt-1 block text-sm text-rose-600"><?= e($msg) ?></span><?php endif; ?>
-        </label>
+        </div>
         <button class="w-full rounded-xl bg-parish py-3 font-semibold text-white transition hover:bg-parishDark">Sign In</button>
         <p class="mt-4 text-center text-sm text-slate-500">
             Don't have an account?
@@ -157,11 +162,16 @@ page_start('Welcome');
                 <input name="username" value="<?= e((string) old('username')) ?>" required class="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-parish">
                 <?php if ($msg = field_error('username')): ?><span class="mt-1 block text-sm text-rose-600"><?= e($msg) ?></span><?php endif; ?>
             </label>
-            <label class="sm:col-span-2">
-                <span class="mb-1 block text-sm font-semibold text-slate-600">Password</span>
-                <input name="password" type="password" required minlength="8" class="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-parish">
+            <div class="sm:col-span-2">
+                <label for="register_password" class="mb-1 block text-sm font-semibold text-slate-600">Password</label>
+                <div class="relative" data-password-field>
+                    <input id="register_password" name="password" type="password" required minlength="8" class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 outline-none transition focus:border-parish">
+                    <button type="button" data-password-toggle class="absolute inset-y-0 right-0 grid w-12 place-items-center text-slate-400 transition hover:text-parish focus:outline-none" aria-label="Show password" aria-pressed="false" title="Show password">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
                 <?php if ($msg = field_error('password')): ?><span class="mt-1 block text-sm text-rose-600"><?= e($msg) ?></span><?php endif; ?>
-            </label>
+            </div>
             <label>
                 <span class="mb-1 block text-sm font-semibold text-slate-600">Register as</span>
                 <select name="role" id="roleSelect" class="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-parish">
@@ -169,11 +179,16 @@ page_start('Welcome');
                     <option value="admin" <?= old('role') === 'admin' ? 'selected' : '' ?>>Administrator</option>
                 </select>
             </label>
-            <label id="adminCodeWrap" class="hidden sm:col-span-2">
-                <span class="mb-1 block text-sm font-semibold text-slate-600">Admin invite code</span>
-                <input name="admin_code" type="password" value="<?= e((string) old('admin_code')) ?>" class="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-parish">
+            <div id="adminCodeWrap" class="hidden sm:col-span-2">
+                <label for="admin_code" class="mb-1 block text-sm font-semibold text-slate-600">Admin invite code</label>
+                <div class="relative" data-password-field>
+                    <input id="admin_code" name="admin_code" type="password" value="<?= e((string) old('admin_code')) ?>" class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 outline-none transition focus:border-parish">
+                    <button type="button" data-password-toggle class="absolute inset-y-0 right-0 grid w-12 place-items-center text-slate-400 transition hover:text-parish focus:outline-none" aria-label="Show password" aria-pressed="false" title="Show password">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
                 <?php if ($msg = field_error('admin_code')): ?><span class="mt-1 block text-sm text-rose-600"><?= e($msg) ?></span><?php endif; ?>
-            </label>
+            </div>
         </div>
         <p class="mt-3 text-sm text-slate-500">Use at least 8 characters with uppercase, number, and special character.</p>
         <button class="mt-6 w-full rounded-xl bg-parish py-3 font-semibold text-white transition hover:bg-parishDark">Register</button>

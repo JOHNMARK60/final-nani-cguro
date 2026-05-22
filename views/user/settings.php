@@ -47,9 +47,33 @@ app_header('Account Settings', $user);
             <div class="border-b border-slate-200 p-8 text-2xl font-semibold"><i class="bi bi-shield-lock mr-4 text-parish"></i>Password Update</div>
             <form method="POST" action="../../controllers/users/change_password.php" class="grid gap-5 p-8 sm:grid-cols-2">
                 <?= csrf_field() ?>
-                <label class="sm:col-span-2"><span class="mb-2 block text-sm font-black uppercase tracking-widest">Current Password</span><input name="current_password" type="password" class="w-full rounded-lg bg-slate-100 px-5 py-4"></label>
-                <label><span class="mb-2 block text-sm font-black uppercase tracking-widest">New Password</span><input name="new_password" type="password" class="w-full rounded-lg bg-slate-100 px-5 py-4"></label>
-                <label><span class="mb-2 block text-sm font-black uppercase tracking-widest">Confirm Password</span><input name="confirm_password" type="password" class="w-full rounded-lg bg-slate-100 px-5 py-4"></label>
+                <div class="sm:col-span-2">
+                    <label for="current_password" class="mb-2 block text-sm font-black uppercase tracking-widest">Current Password</label>
+                    <div class="relative" data-password-field>
+                        <input id="current_password" name="current_password" type="password" class="w-full rounded-lg bg-slate-100 px-5 py-4 pr-12">
+                        <button type="button" data-password-toggle class="absolute inset-y-0 right-0 grid w-12 place-items-center text-slate-400 transition hover:text-parish focus:outline-none" aria-label="Show password" aria-pressed="false" title="Show password">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label for="new_password" class="mb-2 block text-sm font-black uppercase tracking-widest">New Password</label>
+                    <div class="relative" data-password-field>
+                        <input id="new_password" name="new_password" type="password" class="w-full rounded-lg bg-slate-100 px-5 py-4 pr-12">
+                        <button type="button" data-password-toggle class="absolute inset-y-0 right-0 grid w-12 place-items-center text-slate-400 transition hover:text-parish focus:outline-none" aria-label="Show password" aria-pressed="false" title="Show password">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label for="confirm_password" class="mb-2 block text-sm font-black uppercase tracking-widest">Confirm Password</label>
+                    <div class="relative" data-password-field>
+                        <input id="confirm_password" name="confirm_password" type="password" class="w-full rounded-lg bg-slate-100 px-5 py-4 pr-12">
+                        <button type="button" data-password-toggle class="absolute inset-y-0 right-0 grid w-12 place-items-center text-slate-400 transition hover:text-parish focus:outline-none" aria-label="Show password" aria-pressed="false" title="Show password">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
                 <div class="rounded-lg border border-blue-100 bg-blue-50 p-5 text-slate-700 sm:col-span-2"><i class="bi bi-info-circle mr-2 text-parish"></i>Passwords should contain at least 8 characters, including one uppercase letter, one special character, and one number.</div>
                 <div class="sm:col-span-2 flex justify-end"><button class="rounded-lg bg-parish px-8 py-4 font-bold text-white">Change Password</button></div>
             </form>

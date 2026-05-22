@@ -62,7 +62,7 @@ function peso(float|int|string|null $amount): string
 function status_badge(string $status): string
 {
     $classes = match ($status) {
-        'Approved', 'Verified', 'active' => 'bg-green-100 text-green-700',
+        'Approved', 'Verified', 'Scheduled', 'active' => 'bg-green-100 text-green-700',
         'Pending', 'Submitted', 'Confirmed' => 'bg-blue-50 text-parish',
         'Unpaid' => 'bg-amber-100 text-amber-800',
         'Rejected', 'disabled' => 'bg-red-100 text-red-700',
@@ -71,6 +71,96 @@ function status_badge(string $status): string
     };
 
     return '<span class="inline-flex rounded-full px-3 py-1 text-xs font-bold ' . $classes . '">' . e($status) . '</span>';
+}
+
+function dashboard_calendar_grid(array $events, string $month, string $basePath, string $eventHref, bool $showMember = false): string
+{
+    if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+        $month = date('Y-m');
+    }
+
+    $monthStart = DateTimeImmutable::createFromFormat('!Y-m-d', $month . '-01') ?: new DateTimeImmutable('first day of this month');
+    $daysInMonth = (int) $monthStart->format('t');
+    $leadingBlanks = (int) $monthStart->format('w');
+    $prevMonth = $monthStart->modify('-1 month')->format('Y-m');
+    $nextMonth = $monthStart->modify('+1 month')->format('Y-m');
+    $today = date('Y-m-d');
+    $eventsByDay = [];
+
+    foreach ($events as $event) {
+        if (empty($event['appointment_date'])) {
+            continue;
+        }
+
+        $day = (int) date('j', strtotime((string) $event['appointment_date']));
+        $eventsByDay[$day][] = $event;
+    }
+
+    $monthLink = static fn(string $targetMonth): string => e($basePath . '?' . http_build_query(['calendar_month' => $targetMonth]));
+    $html = '<div class="mt-6 overflow-x-auto">';
+    $html .= '<div class="min-w-[820px]">';
+    $html .= '<div class="mb-4 flex items-center justify-between gap-3">';
+    $html .= '<a class="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50" href="' . $monthLink($prevMonth) . '"><i class="bi bi-chevron-left"></i></a>';
+    $html .= '<div class="text-center text-2xl font-black text-slate-950">' . e($monthStart->format('F Y')) . '</div>';
+    $html .= '<a class="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50" href="' . $monthLink($nextMonth) . '"><i class="bi bi-chevron-right"></i></a>';
+    $html .= '</div>';
+    $html .= '<div class="grid grid-cols-7 border-l border-t border-slate-200 bg-white">';
+
+    foreach (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $dayName) {
+        $html .= '<div class="border-b border-r border-slate-200 bg-slate-100 px-3 py-2 text-center text-xs font-black uppercase tracking-widest text-slate-500">' . $dayName . '</div>';
+    }
+
+    for ($i = 0; $i < $leadingBlanks; $i++) {
+        $html .= '<div class="min-h-32 border-b border-r border-slate-200 bg-slate-50"></div>';
+    }
+
+    for ($day = 1; $day <= $daysInMonth; $day++) {
+        $date = $monthStart->setDate((int) $monthStart->format('Y'), (int) $monthStart->format('m'), $day)->format('Y-m-d');
+        $isToday = $date === $today;
+        $cellClass = $isToday ? 'bg-green-50 ring-2 ring-inset ring-parish' : 'bg-white';
+        $html .= '<div class="min-h-32 border-b border-r border-slate-200 p-2 ' . $cellClass . '">';
+        $html .= '<div class="mb-2 flex items-center justify-between"><span class="grid h-7 w-7 place-items-center rounded-full text-sm font-black ' . ($isToday ? 'bg-parish text-white' : 'text-slate-700') . '">' . $day . '</span></div>';
+
+        foreach ($eventsByDay[$day] ?? [] as $event) {
+            $status = (string) ($event['status'] ?? '');
+            $statusClass = match ($status) {
+                'Approved', 'Confirmed', 'Scheduled' => 'border-green-200 bg-green-50 text-green-800',
+                'Pending' => 'border-amber-200 bg-amber-50 text-amber-800',
+                'Cancelled' => 'border-slate-200 bg-slate-50 text-slate-500 line-through',
+                default => 'border-blue-100 bg-blue-50 text-blue-800',
+            };
+            $time = !empty($event['appointment_time']) ? date('h:i A', strtotime((string) $event['appointment_time'])) : '';
+            $href = (string) ($event['href'] ?? $eventHref);
+
+            if ($showMember && !empty($event['id']) && ($event['source_type'] ?? '') !== 'Calendar') {
+                $href .= (str_contains($eventHref, '?') ? '&' : '?') . http_build_query(['q' => (int) $event['id']]);
+            }
+
+            $context = $event['member_name'] ?? $event['event_type'] ?? $event['source_type'] ?? 'Parish event';
+            $html .= '<a class="mb-1 block rounded-md border px-2 py-1 text-xs font-bold leading-5 ' . $statusClass . '" href="' . e($href) . '">';
+            $html .= '<span class="block truncate">' . e((string) ($event['appointment_type'] ?? 'Appointment')) . '</span>';
+            $html .= '<span class="block truncate font-semibold">' . e(trim($time . ' ' . $status)) . '</span>';
+
+            if ($showMember) {
+                $html .= '<span class="block truncate font-medium opacity-80">' . e((string) $context) . '</span>';
+            }
+
+            $html .= '</a>';
+        }
+
+        $html .= '</div>';
+    }
+
+    $usedCells = $leadingBlanks + $daysInMonth;
+    $trailingBlanks = (7 - ($usedCells % 7)) % 7;
+
+    for ($i = 0; $i < $trailingBlanks; $i++) {
+        $html .= '<div class="min-h-32 border-b border-r border-slate-200 bg-slate-50"></div>';
+    }
+
+    $html .= '</div></div></div>';
+
+    return $html;
 }
 
 function page_start(string $title): void
@@ -117,6 +207,26 @@ function page_end(): void
 {
     ?>
     <script>
+    document.querySelectorAll('[data-password-toggle]').forEach(button => {
+        const field = button.closest('[data-password-field]');
+        const input = field?.querySelector('input');
+        const icon = button.querySelector('i');
+
+        if (!input) {
+            return;
+        }
+
+        button.addEventListener('click', () => {
+            const shouldShow = input.type === 'password';
+            input.type = shouldShow ? 'text' : 'password';
+            button.setAttribute('aria-label', shouldShow ? 'Hide password' : 'Show password');
+            button.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
+            button.title = shouldShow ? 'Hide password' : 'Show password';
+            icon?.classList.toggle('bi-eye', !shouldShow);
+            icon?.classList.toggle('bi-eye-slash', shouldShow);
+        });
+    });
+
     document.querySelectorAll('[data-confirm]').forEach(form => {
         form.addEventListener('submit', event => {
             if (form.dataset.confirmed === '1' || typeof Swal === 'undefined') {
@@ -218,11 +328,17 @@ function notification_items(): array
             $certificatePending = (int) $pdo->query("SELECT COUNT(*) FROM certificate_requests WHERE status = 'Pending'")->fetchColumn();
             $paymentSubmitted = (int) $pdo->query("SELECT COUNT(*) FROM payments WHERE status = 'Submitted'")->fetchColumn();
             $appointmentPending = (int) $pdo->query("SELECT COUNT(*) FROM appointments WHERE status = 'Pending'")->fetchColumn();
+            $calendarToday = (int) $pdo->query(
+                "SELECT COUNT(*)
+                 FROM parish_calendar_events
+                 WHERE status = 'Scheduled' AND event_date = CURDATE()"
+            )->fetchColumn();
 
             return array_values(array_filter([
                 $certificatePending > 0 ? ['Certificates', $certificatePending . ' certificate requests need review.', '/E-Parish/views/admin/certificates.php', 'bi-file-earmark-text'] : null,
                 $paymentSubmitted > 0 ? ['Payments', $paymentSubmitted . ' payments are waiting for verification.', '/E-Parish/views/admin/payments.php', 'bi-cash-coin'] : null,
                 $appointmentPending > 0 ? ['Appointments', $appointmentPending . ' appointments are pending.', '/E-Parish/views/admin/appointments.php', 'bi-calendar-event'] : null,
+                $calendarToday > 0 ? ['Parish Calendar', $calendarToday . ' parish calendar item(s) scheduled today.', '/E-Parish/views/admin/appointments.php', 'bi-calendar-check'] : null,
             ]));
         }
 
@@ -235,8 +351,7 @@ function notification_items(): array
                 AND d.delivery_mode = "E-Certificate"
                 AND NOT EXISTS (
                     SELECT 1 FROM payments p
-                    WHERE p.payable_type = "Certificate"
-                        AND p.payable_id = c.id
+                    WHERE p.certificate_request_id = c.id
                         AND p.user_id = c.user_id
                         AND p.status = "Verified"
                 )'
@@ -251,8 +366,7 @@ function notification_items(): array
                 AND d.delivery_mode = "E-Certificate"
                 AND EXISTS (
                     SELECT 1 FROM payments p
-                    WHERE p.payable_type = "Certificate"
-                        AND p.payable_id = c.id
+                    WHERE p.certificate_request_id = c.id
                         AND p.user_id = c.user_id
                         AND p.status = "Verified"
                 )'
@@ -262,14 +376,33 @@ function notification_items(): array
         $rejectedPayments = $pdo->prepare('SELECT COUNT(*) FROM payments WHERE user_id = ? AND status = "Rejected"');
         $rejectedPayments->execute([$userId]);
 
+        $approvedAppointments = $pdo->prepare(
+            'SELECT COUNT(*)
+             FROM appointments
+             WHERE user_id = ? AND status IN ("Approved", "Confirmed")
+                AND appointment_date >= CURDATE()'
+        );
+        $approvedAppointments->execute([$userId]);
+
+        $publicCalendarWeek = (int) $pdo->query(
+            'SELECT COUNT(*)
+             FROM parish_calendar_events
+             WHERE visibility = "Public"
+                AND status = "Scheduled"
+                AND event_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)'
+        )->fetchColumn();
+
         $lockedCount = (int) $issuedLocked->fetchColumn();
         $availableCount = (int) $available->fetchColumn();
         $rejectedCount = (int) $rejectedPayments->fetchColumn();
+        $approvedAppointmentCount = (int) $approvedAppointments->fetchColumn();
 
         return array_values(array_filter([
             $availableCount > 0 ? ['E-Certificate', $availableCount . ' e-certificate is ready to view.', '/E-Parish/views/user/certificates.php', 'bi-patch-check'] : null,
             $lockedCount > 0 ? ['Payment Required', $lockedCount . ' e-certificate needs verified payment.', '/E-Parish/views/user/certificates.php', 'bi-lock'] : null,
             $rejectedCount > 0 ? ['Payment Update', $rejectedCount . ' payment needs correction.', '/E-Parish/views/user/payments.php', 'bi-exclamation-circle'] : null,
+            $approvedAppointmentCount > 0 ? ['Appointments', $approvedAppointmentCount . ' approved appointment(s) upcoming.', '/E-Parish/views/user/appointments.php', 'bi-calendar-check'] : null,
+            $publicCalendarWeek > 0 ? ['Parish Calendar', $publicCalendarWeek . ' public parish event(s) scheduled this week.', '/E-Parish/views/user/dashboard.php', 'bi-calendar-event'] : null,
         ]));
     } catch (\Throwable) {
         return [];

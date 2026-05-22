@@ -42,6 +42,69 @@ class Appointment extends BaseModel
         );
     }
 
+    public function recentForUser(int $userId, int $limit = 10): array
+    {
+        $limit = max(1, min($limit, 50));
+
+        return $this->fetchAll(
+            "SELECT a.*, t.name AS appointment_type
+             FROM appointments a
+             INNER JOIN appointment_types t ON t.id = a.appointment_type_id
+             WHERE a.user_id = ?
+             ORDER BY a.created_at DESC
+             LIMIT {$limit}",
+            [$userId]
+        );
+    }
+
+    public function calendarEvents(?int $userId = null, int $days = 45): array
+    {
+        $days = max(1, min($days, 180));
+        $params = [];
+        $where = 'WHERE a.appointment_date >= CURDATE()
+            AND a.appointment_date <= DATE_ADD(CURDATE(), INTERVAL ' . (int) $days . ' DAY)
+            AND a.status <> "Rejected"';
+
+        if ($userId !== null) {
+            $where .= ' AND a.user_id = ?';
+            $params[] = $userId;
+        }
+
+        return $this->fetchAll(
+            'SELECT a.*, t.name AS appointment_type, u.fullname AS member_name
+             FROM appointments a
+             INNER JOIN appointment_types t ON t.id = a.appointment_type_id
+             LEFT JOIN users u ON u.id = a.user_id
+             ' . $where . '
+             ORDER BY a.appointment_date ASC, a.appointment_time ASC',
+            $params
+        );
+    }
+
+    public function calendarMonth(?int $userId = null, ?string $month = null): array
+    {
+        $month = preg_match('/^\d{4}-\d{2}$/', (string) $month) ? (string) $month : date('Y-m');
+        $start = (new \DateTimeImmutable($month . '-01'))->format('Y-m-01');
+        $end = (new \DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
+        $params = [$start, $end];
+        $where = 'WHERE a.appointment_date BETWEEN ? AND ? AND a.status <> "Rejected"';
+
+        if ($userId !== null) {
+            $where .= ' AND a.user_id = ?';
+            $params[] = $userId;
+        }
+
+        return $this->fetchAll(
+            'SELECT a.*, t.name AS appointment_type, u.fullname AS member_name
+             FROM appointments a
+             INNER JOIN appointment_types t ON t.id = a.appointment_type_id
+             LEFT JOIN users u ON u.id = a.user_id
+             ' . $where . '
+             ORDER BY a.appointment_date ASC, a.appointment_time ASC',
+            $params
+        );
+    }
+
     public function pending(): array
     {
         return $this->fetchAll(
@@ -109,6 +172,18 @@ class Appointment extends BaseModel
     public function countForUser(int $userId): int
     {
         return (int) $this->fetch('SELECT COUNT(*) AS total FROM appointments WHERE user_id = ?', [$userId])['total'];
+    }
+
+    public function countActiveForUser(int $userId): int
+    {
+        return (int) $this->fetch(
+            'SELECT COUNT(*) AS total
+             FROM appointments
+             WHERE user_id = ?
+                AND status IN ("Approved", "Confirmed")
+                AND appointment_date >= CURDATE()',
+            [$userId]
+        )['total'];
     }
 
     public function countByStatus(?string $status = null, ?int $userId = null): int

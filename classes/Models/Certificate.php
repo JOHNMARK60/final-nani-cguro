@@ -63,6 +63,17 @@ final class Certificate extends BaseModel
         );
     }
 
+    public function findForUser(int $id, int $userId): ?array
+    {
+        return $this->fetch(
+            'SELECT c.*, t.name AS certificate_type
+             FROM certificate_requests c
+             INNER JOIN certificate_types t ON t.id = c.certificate_type_id
+             WHERE c.id = ? AND c.user_id = ?',
+            [$id, $userId]
+        );
+    }
+
     public function findWithMember(int $id): ?array
     {
         return $this->fetch(
@@ -115,7 +126,7 @@ final class Certificate extends BaseModel
     public function queue(array $filters = [], int $limit = 20, int $offset = 0): array
     {
         $sql = 'SELECT c.*, t.name AS certificate_type, u.email AS member_email, u.fullname AS member_name,
-                    d.certificate_number, d.delivery_mode, d.issued_at, d.status AS digital_status
+                    d.certificate_number, d.delivery_mode, d.issued_at, d.status AS digital_status, d.officiant
                 FROM certificate_requests c
                 INNER JOIN certificate_types t ON t.id = c.certificate_type_id
                 LEFT JOIN users u ON u.id = c.user_id
@@ -185,6 +196,34 @@ final class Certificate extends BaseModel
     public function updateStatus(int $id, string $status): bool
     {
         return $this->execute('UPDATE certificate_requests SET status = ? WHERE id = ?', [$status, $id]);
+    }
+
+    public function updateRequest(int $id, int $userId, array $data): bool
+    {
+        return $this->execute(
+            'UPDATE certificate_requests
+             SET certificate_type_id = ?, full_name = ?, birth_date = ?, requester_location = ?,
+                 delivery_option = ?, notes = ?, baptismal_file = COALESCE(?, baptismal_file),
+                 id_file = COALESCE(?, id_file)
+             WHERE id = ? AND user_id = ? AND status = "Pending"',
+            [
+                $this->certificateTypeId((string) $data['certificate_type']),
+                $data['full_name'],
+                $data['birth_date'],
+                $data['requester_location'] ?? 'Near Parish',
+                $data['delivery_option'] ?? 'Walk-in Pickup',
+                $data['notes'] ?? null,
+                $data['baptismal_file'] ?? null,
+                $data['id_file'] ?? null,
+                $id,
+                $userId,
+            ]
+        );
+    }
+
+    public function deleteRequest(int $id, int $userId): bool
+    {
+        return $this->execute('DELETE FROM certificate_requests WHERE id = ? AND user_id = ? AND status = "Pending"', [$id, $userId]);
     }
 
     public function history(int $requestId, string $previous, string $new, ?int $adminId = null, ?string $remarks = null): bool

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Certificate;
 use App\Models\Payment;
+use App\Models\Priest;
 use App\Security\Auth;
 use App\Security\Authorization;
 
@@ -31,6 +32,8 @@ $title = (string) $certificate['certificate_type'];
 $eventDate = !empty($certificate['event_date']) ? date('F d, Y', strtotime($certificate['event_date'])) : '________________';
 $birthDate = !empty($certificate['birth_date']) ? date('F d, Y', strtotime($certificate['birth_date'])) : '________________';
 $issuedDate = !empty($certificate['issued_at']) ? date('F d, Y', strtotime($certificate['issued_at'])) : date('F d, Y');
+$priestName = trim((string) ($certificate['officiant'] ?? '')) ?: Priest::DEFAULT_NAME;
+$signatureText = (new Priest($container->pdo()))->signatureForName($priestName);
 
 page_start($title);
 ?>
@@ -88,8 +91,9 @@ page_start($title);
                         <div class="mt-2">Verification Ref: <?= e(substr((string) $certificate['qr_reference'], 0, 18)) ?></div>
                     </div>
                     <div class="text-center">
-                        <div class="mx-auto w-72 border-b border-slate-700 pb-2 font-sans text-lg"><?= e($certificate['officiant'] ?: 'Parish Pastor') ?></div>
-                        <div class="mt-2 text-xl font-bold">Pastor / Parish Registrar</div>
+                        <div class="certificate-signature mx-auto h-14 w-72 overflow-hidden text-4xl text-slate-950"><?= e($signatureText) ?></div>
+                        <div class="mx-auto w-72 border-b border-slate-700 pb-2 font-sans text-lg"><?= e($priestName) ?></div>
+                        <div class="mt-2 text-xl font-bold">Priest / Parish Registrar</div>
                     </div>
                 </div>
             </div>
@@ -105,6 +109,12 @@ page_start($title);
     font-family: "Poppins", ui-sans-serif, system-ui, sans-serif;
     font-weight: 800;
     letter-spacing: 0;
+}
+.certificate-signature {
+    font-family: "Brush Script MT", "Segoe Script", "Lucida Handwriting", cursive;
+    font-weight: 400;
+    letter-spacing: 0;
+    transform: rotate(-2deg);
 }
 .certificate-border {
     background:
@@ -160,7 +170,7 @@ function certificate_body(array $certificate, string $eventDate, string $birthDa
     $parents = e((string) ($certificate['parent_names'] ?: '____________________________'));
     $place = e((string) ($certificate['event_place'] ?: '____________________________'));
     $witnesses = e((string) ($certificate['sponsors_witnesses'] ?: '____________________________'));
-    $remarks = e((string) ($certificate['remarks'] ?: 'as appears from the official parish register of this Church.'));
+    $remarks = e((string) ($certificate['remarks'] ?: 'as appears from the Roman Catholic parish sacramental register.'));
 
     if (str_contains($type, 'marriage')) {
         return <<<HTML

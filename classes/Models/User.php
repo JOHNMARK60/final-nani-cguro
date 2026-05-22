@@ -28,6 +28,11 @@ final class User extends BaseModel
         return $this->fetch('SELECT * FROM users WHERE email = ?', [$email]);
     }
 
+    public function findByLogin(string $login): ?array
+    {
+        return $this->fetch('SELECT * FROM users WHERE email = ? OR username = ?', [$login, $login]);
+    }
+
     public function admins(array $filters = [], int $limit = 10, int $offset = 0): array
     {
         $sql = 'SELECT u.*, c.fullname AS created_by_name
@@ -140,9 +145,9 @@ final class User extends BaseModel
         return (int) $this->db->lastInsertId();
     }
 
-    public function attemptLogin(string $username, string $password): ?array
+    public function attemptLogin(string $login, string $password): ?array
     {
-        $user = $this->findByUsername($username);
+        $user = $this->findByLogin($login);
 
         if (!$user || $user['status'] !== 'active' || !password_verify($password, $user['password'])) {
             return null;

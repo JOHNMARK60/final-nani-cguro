@@ -25,6 +25,11 @@ vendor/
 node_modules/
 .phpunit.result.cache
 
+# Private local transfer bundles and database dumps
+private-transfer/
+*.sql
+*.zip
+
 # OS/editor noise
 .DS_Store
 Thumbs.db

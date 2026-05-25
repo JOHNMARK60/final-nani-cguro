@@ -61,16 +61,21 @@ function peso(float|int|string|null $amount): string
 
 function status_badge(string $status): string
 {
+    $label = $status === 'Submitted' ? 'Pending Verification' : $status;
     $classes = match ($status) {
-        'Approved', 'Verified', 'Scheduled', 'active' => 'bg-green-100 text-green-700',
-        'Pending', 'Submitted', 'Confirmed' => 'bg-blue-50 text-parish',
+        'Approved', 'Verified', 'Scheduled', 'active', 'Active' => 'bg-green-100 text-green-700',
+        'Pending', 'Submitted', 'Confirmed' => 'bg-yellow-50 text-parish',
         'Unpaid' => 'bg-amber-100 text-amber-800',
+        'Eligible', 'Eligible / Active' => 'bg-yellow-100 text-parish',
+        'In Stock' => 'bg-green-100 text-green-700',
+        'Low Stock' => 'bg-amber-100 text-amber-800',
+        'Out of Stock' => 'bg-red-100 text-red-700',
         'Rejected', 'disabled' => 'bg-red-100 text-red-700',
-        'Cancelled' => 'bg-slate-100 text-slate-600',
+        'Cancelled', 'Inactive', 'Archived' => 'bg-slate-100 text-slate-600',
         default => 'bg-slate-100 text-slate-700',
     };
 
-    return '<span class="inline-flex rounded-full px-3 py-1 text-xs font-bold ' . $classes . '">' . e($status) . '</span>';
+    return '<span class="inline-flex rounded-full px-3 py-1 text-xs font-bold ' . $classes . '">' . e($label) . '</span>';
 }
 
 function dashboard_calendar_grid(array $events, string $month, string $basePath, string $eventHref, bool $showMember = false): string
@@ -117,17 +122,17 @@ function dashboard_calendar_grid(array $events, string $month, string $basePath,
     for ($day = 1; $day <= $daysInMonth; $day++) {
         $date = $monthStart->setDate((int) $monthStart->format('Y'), (int) $monthStart->format('m'), $day)->format('Y-m-d');
         $isToday = $date === $today;
-        $cellClass = $isToday ? 'bg-green-50 ring-2 ring-inset ring-parish' : 'bg-white';
+        $cellClass = $isToday ? 'bg-yellow-50 ring-2 ring-inset ring-parish' : 'bg-white';
         $html .= '<div class="min-h-32 border-b border-r border-slate-200 p-2 ' . $cellClass . '">';
         $html .= '<div class="mb-2 flex items-center justify-between"><span class="grid h-7 w-7 place-items-center rounded-full text-sm font-black ' . ($isToday ? 'bg-parish text-white' : 'text-slate-700') . '">' . $day . '</span></div>';
 
         foreach ($eventsByDay[$day] ?? [] as $event) {
             $status = (string) ($event['status'] ?? '');
             $statusClass = match ($status) {
-                'Approved', 'Confirmed', 'Scheduled' => 'border-green-200 bg-green-50 text-green-800',
+                'Approved', 'Confirmed', 'Scheduled' => 'border-yellow-200 bg-yellow-50 text-yellow-900',
                 'Pending' => 'border-amber-200 bg-amber-50 text-amber-800',
                 'Cancelled' => 'border-slate-200 bg-slate-50 text-slate-500 line-through',
-                default => 'border-blue-100 bg-blue-50 text-blue-800',
+                default => 'border-yellow-100 bg-yellow-50 text-yellow-900',
             };
             $time = !empty($event['appointment_time']) ? date('h:i A', strtotime((string) $event['appointment_time'])) : '';
             $href = (string) ($event['href'] ?? $eventHref);
@@ -186,10 +191,10 @@ function page_start(string $title): void
                             sans: ['Poppins', 'ui-sans-serif', 'system-ui', 'sans-serif']
                         },
                         colors: {
-                            parish: '#22c55e',
-                            parishDark: '#16a34a',
-                            parishSoft: '#eef2f7',
-                            gold: '#f59e0b'
+                            parish: '#D4AF37',
+                            parishDark: '#B8860B',
+                            parishSoft: '#fffaf0',
+                            gold: '#F5D76E'
                         },
                         boxShadow: {
                             soft: '0 10px 30px rgba(15, 23, 42, 0.08)'
@@ -198,6 +203,17 @@ function page_start(string $title): void
                 }
             }
         </script>
+        <style>
+            .text-parish { color: #B8860B !important; }
+            .bg-parish { background-color: #D4AF37 !important; }
+            .bg-parish.text-white { color: #1f2937 !important; }
+            .bg-parishDark { background-color: #B8860B !important; }
+            .border-parish { border-color: #D4AF37 !important; }
+            .ring-parish { --tw-ring-color: #D4AF37 !important; }
+            .focus\:border-parish:focus { border-color: #D4AF37 !important; }
+            .hover\:bg-parishDark:hover { background-color: #B8860B !important; color: #fff !important; }
+            .swal2-confirm { background-color: #B8860B !important; }
+        </style>
     </head>
     <body class="min-h-screen bg-parishSoft font-sans text-slate-900">
     <?php
@@ -239,7 +255,7 @@ function page_end(): void
                 text: form.dataset.confirmText || 'This action will update the record.',
                 icon: form.dataset.confirmIcon || 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#1d4ed8',
+                confirmButtonColor: '#B8860B',
                 cancelButtonColor: '#64748b',
                 confirmButtonText: form.dataset.confirmButton || 'Yes, continue'
             }).then(result => {
@@ -262,11 +278,15 @@ function sidebar(string $active): void
     $items = $role === 'admin'
         ? [
             ['Dashboard', 'bi-grid', '/E-Parish/views/admin/dashboard.php'],
+            ['Users', 'bi-people-fill', '/E-Parish/views/admin/users.php'],
             ['Admins', 'bi-person-badge', '/E-Parish/views/admin/admins.php'],
+            ['Services', 'bi-card-checklist', '/E-Parish/views/admin/services.php'],
+            ['Inventory', 'bi-box-seam', '/E-Parish/views/admin/inventory.php'],
             ['Certificates', 'bi-file-earmark-text', '/E-Parish/views/admin/certificates.php'],
             ['Appointments', 'bi-calendar-event', '/E-Parish/views/admin/appointments.php'],
             ['Payments', 'bi-cash-coin', '/E-Parish/views/admin/payments.php'],
             ['Volunteers', 'bi-people', '/E-Parish/views/admin/volunteers.php'],
+            ['Settings', 'bi-gear-fill', '/E-Parish/views/admin/settings.php'],
             ['Audit Logs', 'bi-journal-text', '/E-Parish/views/admin/audit_logs.php'],
         ]
         : [
@@ -279,9 +299,9 @@ function sidebar(string $active): void
             ['Account Settings', 'bi-gear', '/E-Parish/views/user/settings.php'],
         ];
     ?>
-    <aside class="fixed inset-y-0 left-0 z-30 hidden w-64 bg-white text-slate-900 shadow-soft ring-1 ring-slate-200 lg:flex lg:flex-col">
+    <aside class="fixed inset-y-0 left-0 z-30 hidden w-64 bg-white text-slate-900 shadow-soft ring-1 ring-yellow-100 lg:flex lg:flex-col">
         <div class="flex items-center gap-4 px-7 py-8">
-            <div class="grid h-11 w-11 place-items-center rounded-xl bg-green-100 text-parish">
+            <div class="grid h-11 w-11 place-items-center rounded-xl bg-yellow-100 text-parish">
                 <i class="bi bi-houses text-2xl"></i>
             </div>
             <div>
@@ -291,7 +311,7 @@ function sidebar(string $active): void
         </div>
         <nav class="mt-4 flex-1 space-y-1 px-3">
             <?php foreach ($items as [$label, $icon, $href]): ?>
-                <a href="<?= e($href) ?>" class="flex items-center gap-4 rounded-lg px-4 py-3 text-sm font-semibold transition <?= $active === $label ? 'bg-green-50 text-parish' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' ?>">
+                <a href="<?= e($href) ?>" class="flex items-center gap-4 rounded-lg px-4 py-3 text-sm font-semibold transition <?= $active === $label ? 'bg-yellow-50 text-parish ring-1 ring-yellow-100' : 'text-slate-600 hover:bg-yellow-50 hover:text-slate-900' ?>">
                     <i class="bi <?= e($icon) ?> text-lg"></i>
                     <?= e($label) ?>
                 </a>
@@ -305,7 +325,7 @@ function sidebar(string $active): void
     <nav class="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-2 py-2 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
         <div class="flex gap-2 overflow-x-auto">
             <?php foreach ($items as [$label, $icon, $href]): ?>
-                <a href="<?= e($href) ?>" class="flex min-w-[5rem] flex-col items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold transition <?= $active === $label ? 'bg-blue-50 text-parish' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' ?>">
+                <a href="<?= e($href) ?>" class="flex min-w-[5rem] flex-col items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold transition <?= $active === $label ? 'bg-yellow-50 text-parish' : 'text-slate-500 hover:bg-yellow-50 hover:text-slate-900' ?>">
                     <i class="bi <?= e($icon) ?> text-lg"></i>
                     <span class="whitespace-nowrap"><?= e($label) ?></span>
                 </a>
@@ -436,7 +456,7 @@ function app_header(string $title, array $user): void
                 <div id="notificationMenu" class="absolute right-0 top-14 z-50 hidden w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-soft">
                     <div class="mb-3 flex items-center justify-between">
                         <div class="font-black text-slate-950">Notifications</div>
-                        <span class="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-parish"><?= count($notifications) ?> new</span>
+                        <span class="rounded-full bg-yellow-50 px-3 py-1 text-xs font-bold text-parish"><?= count($notifications) ?> new</span>
                     </div>
                     <div class="space-y-2">
                         <?php if ($notifications === []): ?>
@@ -444,7 +464,7 @@ function app_header(string $title, array $user): void
                         <?php endif; ?>
                         <?php foreach ($notifications as [$label, $message, $href, $icon]): ?>
                             <a href="<?= e($href) ?>" class="flex gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
-                                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-green-50 text-parish"><i class="bi <?= e($icon) ?>"></i></span>
+                                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-yellow-50 text-parish"><i class="bi <?= e($icon) ?>"></i></span>
                                 <span>
                                     <span class="block text-sm font-bold text-slate-900"><?= e($label) ?></span>
                                     <span class="block text-xs leading-5 text-slate-500"><?= e($message) ?></span>

@@ -150,7 +150,7 @@ app_header('Certificate Queue', $user);
             <label><span class="mb-1 block font-bold">Parish Address</span><input name="parish_address" value="Parish Office" class="w-full rounded-lg border border-slate-200 p-3"></label>
             <label><span class="mb-1 block font-bold">Birth Date</span><input name="birth_date" id="issue_birth_date" type="date" class="w-full rounded-lg border border-slate-200 p-3"></label>
             <label><span class="mb-1 block font-bold">Sacrament / Rite Date</span><input name="event_date" type="date" class="w-full rounded-lg border border-slate-200 p-3"></label>
-            <div class="rounded-lg bg-green-50 p-4 text-sm font-semibold text-green-700 sm:col-span-2">
+            <div class="rounded-lg bg-yellow-50 p-4 text-sm font-semibold text-yellow-900 sm:col-span-2">
                 Roman Catholic registry details are supplied by the parish office from the sacramental register. The member request starts the process; the church record provides the priest, sponsors/witnesses, book no., and page no.
             </div>
             <label class="sm:col-span-2"><span class="mb-1 block font-bold">Parents / Spouses From Parish Register</span><input name="parent_names" placeholder="As recorded in the sacramental register" class="w-full rounded-lg border border-slate-200 p-3"></label>
@@ -173,7 +173,7 @@ app_header('Certificate Queue', $user);
             <label><span class="mb-1 block font-bold">Registry Page No.</span><input name="page_no" placeholder="From parish register" class="w-full rounded-lg border border-slate-200 p-3"></label>
             <label class="sm:col-span-2"><span class="mb-1 block font-bold">Remarks</span><textarea name="remarks" class="w-full rounded-lg border border-slate-200 p-3">as appears from the Roman Catholic parish sacramental register.</textarea></label>
         </div>
-        <div class="mt-6 rounded-lg bg-green-50 p-4 text-sm font-semibold text-green-700">
+        <div class="mt-6 rounded-lg bg-yellow-50 p-4 text-sm font-semibold text-yellow-900">
             Certificate number can be auto-generated when left blank. Registry book and page numbers are entered by the parish office from the official church record.
         </div>
         <button class="mt-6 w-full rounded-lg bg-parish py-3 font-bold text-white">Issue Certificate</button>

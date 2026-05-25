@@ -15,11 +15,10 @@ $user = (new User($container->pdo()))->find(Auth::userId()) ?? [];
 $volunteerModel = new VolunteerService($container->pdo());
 $logs = $volunteerModel->forUser(Auth::userId());
 $activityTypes = (new ReferenceData($container->pdo()))->volunteerActivities();
-$approvedHours = array_sum(array_map(
-    static fn(array $log): float => in_array($log['status'], ['Approved', 'Verified'], true) ? (float) $log['hours_served'] : 0.0,
-    $logs
-));
-$hasRecognition = $approvedHours >= 20;
+$eligibility = $volunteerModel->eligibilitySummary((int) Auth::userId());
+$approvedHours = (float) $eligibility['approved_hours'];
+$requiredHours = (float) $eligibility['required_hours'];
+$hasRecognition = (bool) $eligibility['is_eligible'];
 
 page_start('Volunteer');
 sidebar('Volunteer');
@@ -33,8 +32,8 @@ app_header('Volunteer Incentives', $user);
             <button data-open="volunteerModal" class="rounded-xl bg-parish px-7 py-4 text-lg font-bold text-white shadow-soft"><i class="bi bi-plus-lg mr-2"></i>New Volunteer Activity</button>
         </div>
         <section class="grid gap-8 lg:grid-cols-2">
-            <div class="rounded-xl bg-white p-10 shadow-soft"><h3 class="text-3xl font-black"><i class="bi bi-cash-coin mr-4 text-parish"></i>Certificate Discounts</h3><p class="mt-6 text-lg text-slate-700">Active volunteers enjoy reduced fees when requesting baptismal, marriage, and other parish certificates.</p><div class="mt-8 flex flex-wrap gap-5"><span class="rounded-full bg-green-100 px-4 py-1 font-bold text-green-700"><?= $approvedHours > 0 ? 'Active' : 'Pending' ?></span><strong class="text-xl text-parish">Approved Hours: <?= e(number_format($approvedHours, 1)) ?></strong></div></div>
-            <div class="rounded-xl bg-white p-10 shadow-soft"><h3 class="text-3xl font-black"><i class="bi bi-award mr-4 text-amber-800"></i>Service Recognition</h3><p class="mt-6 text-lg text-slate-700">Earn Good Moral Certificate eligibility after 20 approved volunteer hours.</p><button class="mt-8 rounded-lg <?= $hasRecognition ? 'bg-parish text-white' : 'bg-blue-100 text-slate-600' ?> px-8 py-3 font-bold" disabled><?= $hasRecognition ? 'Eligible' : 'Locked' ?></button></div>
+            <div class="rounded-xl bg-white p-10 shadow-soft"><h3 class="text-3xl font-black"><i class="bi bi-cash-coin mr-4 text-parish"></i>Certificate Discounts</h3><p class="mt-6 text-lg text-slate-700">Eligible active volunteers automatically receive a 10% discount for baptismal, marriage, confirmation, and death certificates.</p><div class="mt-8 flex flex-wrap gap-5"><span class="rounded-full <?= $hasRecognition ? 'bg-yellow-100 text-parish' : 'bg-slate-100 text-slate-600' ?> px-4 py-1 font-bold"><?= $hasRecognition ? 'Eligible / Active' : 'Pending' ?></span><strong class="text-xl text-parish">Approved Hours: <?= e(number_format($approvedHours, 1)) ?></strong></div></div>
+            <div class="rounded-xl bg-white p-10 shadow-soft"><h3 class="text-3xl font-black"><i class="bi bi-award mr-4 text-amber-800"></i>Service Recognition</h3><p class="mt-6 text-lg text-slate-700">Earn Good Moral Certificate eligibility after <?= e(number_format($requiredHours, 1)) ?> approved volunteer hours.</p><?php if ($hasRecognition): ?><a href="volunteer_certificate.php" class="mt-8 inline-flex rounded-lg bg-parish px-8 py-3 font-bold text-white">Eligible - Print Certificate</a><?php else: ?><button class="mt-8 rounded-lg bg-slate-100 px-8 py-3 font-bold text-slate-600" disabled><?= e(number_format((float) $eligibility['remaining_hours'], 1)) ?> hours remaining</button><?php endif; ?></div>
         </section>
         <section class="mt-12 overflow-hidden rounded-xl bg-white shadow-soft">
             <div class="border-b border-slate-200 px-8 pt-8"><div class="inline-block border-b-2 border-parish px-1 pb-5 text-lg font-bold text-parish">Service Log</div><div class="ml-8 inline-block pb-5 text-lg">Certificates Earned</div></div>

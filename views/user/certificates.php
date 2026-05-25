@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Certificate;
+use App\Models\Payment;
 use App\Models\ReferenceData;
 use App\Models\User;
 use App\Security\Auth;
@@ -14,6 +15,7 @@ Auth::requireLogin('/E-Parish/index.php');
 
 $user = (new User($container->pdo()))->find(Auth::userId()) ?? [];
 $certificates = new Certificate($container->pdo());
+$paymentModel = new Payment($container->pdo());
 $requests = $certificates->forUserWithDigital((int) Auth::userId());
 $certificateTypes = (new ReferenceData($container->pdo()))->certificateTypes();
 
@@ -62,6 +64,7 @@ app_header('Certificates', $user);
                                 $isECertificate = ($row['delivery_mode'] ?? $row['delivery_option'] ?? '') === 'E-Certificate';
                                 $hasVerifiedPayment = !empty($row['verified_payment_id']);
                                 $paymentDescription = urlencode($row['certificate_type'] . ' - ' . $row['full_name']);
+                                $charge = $paymentModel->calculateCertificateCharge((int) $row['id'], (int) Auth::userId());
                             ?>
                             <tr class="border-t border-slate-100 align-top">
                                 <td class="p-5 font-bold"><?= e($row['certificate_type']) ?></td>
@@ -80,10 +83,13 @@ app_header('Certificates', $user);
                                     <?php elseif (!$hasVerifiedPayment): ?>
                                         <div class="grid gap-2">
                                             <span class="text-sm font-semibold text-slate-500">Locked until payment is verified</span>
-                                            <a class="rounded-lg bg-parish px-3 py-2 text-center text-sm font-bold text-white" href="payments.php?certificate_id=<?= (int) $row['id'] ?>&description=<?= $paymentDescription ?>&amount=150">Pay to Unlock</a>
+                                            <?php if ($charge['discount_percent'] > 0): ?>
+                                                <span class="text-xs font-bold text-parish">10% active volunteer discount applied</span>
+                                            <?php endif; ?>
+                                            <a class="rounded-lg bg-parish px-3 py-2 text-center text-sm font-bold text-white" href="payments.php?certificate_id=<?= (int) $row['id'] ?>&description=<?= $paymentDescription ?>&amount=<?= e((string) $charge['final_amount']) ?>">Pay <?= e(peso($charge['final_amount'])) ?></a>
                                         </div>
                                     <?php else: ?>
-                                        <a class="rounded-lg bg-green-600 px-3 py-2 text-sm font-bold text-white" href="certificate_view.php?id=<?= (int) $row['id'] ?>">View E-Certificate</a>
+                                        <a class="rounded-lg bg-parish px-3 py-2 text-sm font-bold text-white" href="certificate_view.php?id=<?= (int) $row['id'] ?>">View E-Certificate</a>
                                     <?php endif; ?>
                                 </td>
                                 <td class="p-5">
@@ -131,13 +137,13 @@ app_header('Certificates', $user);
                     <option value="Near Parish">Near the parish - walk-in pickup is recommended</option>
                     <option value="Far from Parish">Far from the parish - e-certificate is recommended</option>
                 </select>
-                <span id="deliveryHint" class="mt-2 block rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">Near members are guided to claim the certificate at the parish office.</span>
+                <span id="deliveryHint" class="mt-2 block rounded-lg bg-yellow-50 px-3 py-2 text-sm font-semibold text-yellow-900">Near members are guided to claim the certificate at the parish office.</span>
             </label>
             <div id="supportingDocumentGroup" class="sm:col-span-1">
                 <div id="supportingDocumentField" class="max-h-0 overflow-hidden opacity-0 pointer-events-none translate-y-1 transition-all duration-200 ease-in-out">
                     <label class="block"><span class="mb-1 block text-sm font-bold">Supporting Document</span><input type="file" name="baptismal_file" id="supportingDocumentInput" accept=".jpg,.jpeg,.png,.pdf" class="w-full rounded-lg border p-3"></label>
                 </div>
-                <div id="supportingDocumentHelper" class="mt-2 max-h-24 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-700 opacity-100 translate-y-0 transition-all duration-200 ease-in-out">If you have an old copy of your baptismal certificate, you may upload it optionally to help us locate records faster.</div>
+                <div id="supportingDocumentHelper" class="mt-2 max-h-24 rounded-lg bg-yellow-50 px-3 py-2 text-sm font-semibold text-yellow-900 opacity-100 translate-y-0 transition-all duration-200 ease-in-out">If you have an old copy of your baptismal certificate, you may upload it optionally to help us locate records faster.</div>
             </div>
             <label><span class="mb-1 block font-bold">Valid ID</span><input type="file" name="id_file" accept=".jpg,.jpeg,.png,.pdf" required class="w-full rounded-lg border p-3"></label>
             <label class="sm:col-span-2"><span class="mb-1 block font-bold">Notes</span><textarea name="notes" class="w-full rounded-lg border p-3"></textarea></label>

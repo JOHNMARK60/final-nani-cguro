@@ -316,6 +316,18 @@ final class Certificate extends BaseModel
         );
     }
 
+    public function typeDistribution(): array
+    {
+        return $this->fetchAll(
+            'SELECT t.name AS label, COUNT(c.id) AS total
+             FROM certificate_types t
+             LEFT JOIN certificate_requests c ON c.certificate_type_id = t.id
+             WHERE t.is_active = 1
+             GROUP BY t.id, t.name, t.sort_order
+             ORDER BY t.sort_order ASC, t.name ASC'
+        );
+    }
+
     private function certificateTypeId(string $name): int
     {
         $row = $this->fetch(

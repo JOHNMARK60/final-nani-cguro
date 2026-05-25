@@ -51,7 +51,7 @@ usort($recent, static fn(array $a, array $b): int => strcmp((string) $b['sort_at
 $recent = array_slice($recent, 0, 8);
 $calendarMonth = preg_match('/^\d{4}-\d{2}$/', (string) ($_GET['calendar_month'] ?? '')) ? (string) $_GET['calendar_month'] : date('Y-m');
 $calendarEvents = array_merge(
-    $appointmentModel->calendarMonth($userId, $calendarMonth),
+    $appointmentModel->calendarMonth(null, $calendarMonth),
     $calendarModel->month($calendarMonth, true)
 );
 usort($calendarEvents, static fn(array $a, array $b): int => strcmp(
@@ -73,24 +73,28 @@ app_header('Dashboard', $user);
         </section>
 
         <section class="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
-            <div class="rounded-xl bg-blue-600 p-8 text-white shadow-soft">
+            <div class="rounded-xl bg-white p-8 shadow-soft ring-1 ring-yellow-100">
+                <i class="bi bi-file-earmark-text text-3xl text-parish"></i>
                 <div class="text-5xl font-black"><?= $certificateModel->countByStatus('Pending', $userId) ?></div>
-                <div class="mt-2 text-sm font-bold uppercase tracking-widest">Pending Requests</div>
+                <div class="mt-2 text-sm font-bold uppercase tracking-widest text-slate-500">Pending Requests</div>
             </div>
             <div class="rounded-xl bg-gold p-8 text-slate-950 shadow-soft">
+                <i class="bi bi-calendar-event text-3xl"></i>
                 <div class="text-5xl font-black"><?= $appointmentModel->countForUser($userId) ?></div>
                 <div class="mt-2 text-sm font-bold uppercase tracking-widest">Appointments</div>
             </div>
-            <div class="rounded-xl bg-sky-700 p-8 text-white shadow-soft">
+            <div class="rounded-xl bg-parish p-8 text-slate-950 shadow-soft">
+                <i class="bi bi-patch-check text-3xl"></i>
                 <div class="text-5xl font-black"><?= $certificateModel->countByStatus(null, $userId) ?></div>
                 <div class="mt-2 text-sm font-bold uppercase tracking-widest">Certificates</div>
             </div>
-            <div class="rounded-xl bg-green-700 p-8 text-white shadow-soft">
+            <div class="rounded-xl bg-white p-8 shadow-soft ring-1 ring-yellow-100">
+                <i class="bi bi-award text-3xl text-parish"></i>
                 <div class="text-5xl font-black"><?= $volunteerModel->countForUser($userId) ?></div>
-                <div class="mt-2 text-sm font-bold uppercase tracking-widest">Volunteer Activities</div>
+                <div class="mt-2 text-sm font-bold uppercase tracking-widest text-slate-500">Volunteer Activities</div>
             </div>
             <div class="rounded-xl bg-white p-8 text-slate-950 shadow-soft">
-                <div class="text-3xl font-black text-green-700"><?= e(peso($paymentModel->sumByStatus('Verified', $userId))) ?></div>
+                <div class="text-3xl font-black text-parish"><?= e(peso($paymentModel->sumByStatus('Verified', $userId))) ?></div>
                 <div class="mt-2 text-sm font-bold uppercase tracking-widest text-slate-500">Verified Payments</div>
             </div>
         </section>
@@ -98,7 +102,7 @@ app_header('Dashboard', $user);
         <section class="mt-12 rounded-xl border border-slate-200 bg-white p-8 shadow-soft">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h3 class="text-3xl font-black text-parish">Appointment Calendar</h3>
+                    <h3 class="text-3xl font-black text-parish">Approved Parish Calendar</h3>
                 </div>
                 <a href="appointments.php" class="rounded-lg border border-slate-200 px-4 py-2 font-bold text-slate-700">View Appointments</a>
             </div>
@@ -123,7 +127,7 @@ app_header('Dashboard', $user);
                         <tr class="border-t border-slate-100">
                             <td class="p-5 font-semibold"><?= e($request['label']) ?></td>
                             <td><?= e($request['kind']) ?></td>
-                            <td><span class="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-parish"><?= e($request['status']) ?></span></td>
+                            <td><?= status_badge((string) $request['status']) ?></td>
                             <td><?= e($request['display_date']) ?></td>
                             <td><a class="font-bold text-parish" href="<?= e($request['href']) ?>">Open</a></td>
                         </tr>

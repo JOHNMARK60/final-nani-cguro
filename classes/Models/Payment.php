@@ -9,6 +9,13 @@ use InvalidArgumentException;
 
 final class Payment extends BaseModel
 {
+    private const DISCOUNTABLE_CERTIFICATES = [
+        'Baptismal Certificate',
+        'Marriage Certificate',
+        'Confirmation Certificate',
+        'Death Certificate',
+    ];
+
     private const PAYMENT_SELECT = "p.*, pm.name AS method, pc.name AS payable_type,
         CASE
             WHEN pc.name = 'Certificate' THEN p.certificate_request_id
@@ -24,8 +31,9 @@ final class Payment extends BaseModel
 
         $this->execute(
             'INSERT INTO payments
-             (user_id, payment_category_id, certificate_request_id, appointment_id, description, amount, payment_method_id, reference_number, proof_file, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+             (user_id, payment_category_id, certificate_request_id, appointment_id, description,
+              amount, original_amount, discount_percent, discount_amount, payment_method_id, reference_number, proof_file, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $data['user_id'],
                 $this->paymentCategoryId($payableType),
@@ -33,6 +41,9 @@ final class Payment extends BaseModel
                 $appointmentId,
                 $data['description'],
                 $data['amount'],
+                $data['original_amount'] ?? $data['amount'],
+                $data['discount_percent'] ?? 0,
+                $data['discount_amount'] ?? 0,
                 $this->paymentMethodId((string) $data['method']),
                 $data['reference_number'] ?? null,
                 $data['proof_file'] ?? null,
@@ -95,6 +106,41 @@ final class Payment extends BaseModel
         $sql .= ' ORDER BY p.verified_at DESC, p.updated_at DESC LIMIT 1';
 
         return $this->fetch($sql, $params);
+    }
+
+    public function calculateCertificateCharge(int $certificateRequestId, int $userId): array
+    {
+        $request = $this->fetch(
+            'SELECT c.id, c.user_id, c.full_name, t.name AS certificate_type
+             FROM certificate_requests c
+             INNER JOIN certificate_types t ON t.id = c.certificate_type_id
+             WHERE c.id = ? AND c.user_id = ?
+             LIMIT 1',
+            [$certificateRequestId, $userId]
+        );
+
+        if (!$request) {
+            throw new InvalidArgumentException('Certificate request not found for this account.');
+        }
+
+        $certificateType = (string) $request['certificate_type'];
+        $originalAmount = (new ParishService($this->db))->priceFor($certificateType, 'Certificate', 150.00);
+        $isDiscountable = in_array($certificateType, self::DISCOUNTABLE_CERTIFICATES, true);
+        $eligible = (new VolunteerService($this->db))->eligibilitySummary($userId)['is_eligible'] ?? false;
+        $discountPercent = $isDiscountable && $eligible ? 10.0 : 0.0;
+        $discountAmount = round($originalAmount * ($discountPercent / 100), 2);
+        $finalAmount = max(0, round($originalAmount - $discountAmount, 2));
+
+        return [
+            'certificate_type' => $certificateType,
+            'full_name' => (string) $request['full_name'],
+            'original_amount' => $originalAmount,
+            'discount_percent' => $discountPercent,
+            'discount_amount' => $discountAmount,
+            'final_amount' => $finalAmount,
+            'is_eligible' => (bool) $eligible,
+            'is_discountable' => $isDiscountable,
+        ];
     }
 
     public function forUser(int $userId): array
@@ -270,6 +316,16 @@ final class Payment extends BaseModel
              LEFT JOIN users u ON u.id = p.user_id
              ORDER BY p.created_at DESC
              LIMIT {$limit}"
+        );
+    }
+
+    public function statusDistribution(): array
+    {
+        return $this->fetchAll(
+            'SELECT status AS label, COUNT(*) AS total
+             FROM payments
+             GROUP BY status
+             ORDER BY status ASC'
         );
     }
 

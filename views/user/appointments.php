@@ -53,7 +53,7 @@ app_header('Dashboard', $user);
                                 <td class="p-5"><?= e(date('M d, Y', strtotime($appointment['appointment_date']))) ?></td>
                                 <td><?= e(date('h:i A', strtotime($appointment['appointment_time']))) ?></td>
                                 <td class="font-semibold"><i class="bi bi-houses mr-2 text-parish"></i><?= e($appointment['appointment_type']) ?></td>
-                                <td><span class="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-parish"><?= e($appointment['status']) ?></span></td>
+                                <td><?= status_badge((string) $appointment['status']) ?></td>
                                 <td>
                                     <form method="POST" action="../../controllers/users/appointments/delete.php" data-confirm="Delete this appointment?" data-confirm-text="This appointment request will be removed." data-confirm-icon="warning" data-confirm-button="Delete">
                                         <?= csrf_field() ?>
@@ -72,7 +72,7 @@ app_header('Dashboard', $user);
         <section class="mt-10 grid gap-6 md:grid-cols-3">
             <div class="rounded-xl bg-white p-8 shadow-soft"><div class="font-bold uppercase tracking-widest text-slate-500">Total Monthly</div><div class="mt-3 text-4xl font-black text-parish"><?= count($appointments) ?></div><p>Confirmed bookings</p></div>
             <div class="rounded-xl bg-white p-8 shadow-soft"><div class="font-bold uppercase tracking-widest text-slate-500">Wait Time</div><div class="mt-3 text-4xl font-black text-amber-800">~2 Days</div><p>Avg. approval speed</p></div>
-            <div class="rounded-xl bg-parish p-8 text-white shadow-soft"><div class="font-bold uppercase tracking-widest text-blue-100">Parish Center</div><div class="mt-3 text-3xl font-black">Main Sanctuary</div><p>Location for next visit</p></div>
+            <div class="rounded-xl bg-parish p-8 text-slate-950 shadow-soft"><div class="font-bold uppercase tracking-widest">Parish Center</div><div class="mt-3 text-3xl font-black">Main Sanctuary</div><p>Location for next visit</p></div>
         </section>
     </div>
 </main>

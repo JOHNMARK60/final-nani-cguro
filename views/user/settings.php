@@ -37,6 +37,7 @@ app_header('Account Settings', $user);
                     <label><span class="mb-2 block text-sm font-black uppercase tracking-widest">Email Address</span><input name="email" type="email" value="<?= e($user['email'] ?? '') ?>" class="w-full rounded-lg bg-slate-100 px-5 py-4"></label>
                     <label><span class="mb-2 block text-sm font-black uppercase tracking-widest">Phone Number</span><input name="phone" value="<?= e($user['phone'] ?? '') ?>" class="w-full rounded-lg bg-slate-100 px-5 py-4"></label>
                     <label><span class="mb-2 block text-sm font-black uppercase tracking-widest">Username</span><input name="username" value="<?= e($user['username'] ?? '') ?>" class="w-full rounded-lg bg-slate-100 px-5 py-4"></label>
+                    <label class="sm:col-span-2"><span class="mb-2 block text-sm font-black uppercase tracking-widest">Address</span><input name="address" value="<?= e($user['address'] ?? '') ?>" class="w-full rounded-lg bg-slate-100 px-5 py-4"></label>
                     <label class="sm:col-span-2"><span class="mb-2 block text-sm font-black uppercase tracking-widest">Designation</span><input name="designation" value="<?= e($user['designation'] ?? ($user['role'] === 'admin' ? 'Parish Administrator' : 'Parish Member')) ?>" class="w-full rounded-lg bg-slate-100 px-5 py-4"></label>
                     <div class="sm:col-span-2 flex justify-end"><button class="rounded-lg bg-parish px-8 py-4 font-bold text-white">Save Changes</button></div>
                 </form>
@@ -74,7 +75,7 @@ app_header('Account Settings', $user);
                         </button>
                     </div>
                 </div>
-                <div class="rounded-lg border border-blue-100 bg-blue-50 p-5 text-slate-700 sm:col-span-2"><i class="bi bi-info-circle mr-2 text-parish"></i>Passwords should contain at least 8 characters, including one uppercase letter, one special character, and one number.</div>
+                <div class="rounded-lg border border-yellow-100 bg-yellow-50 p-5 text-slate-700 sm:col-span-2"><i class="bi bi-info-circle mr-2 text-parish"></i>Passwords should contain at least 8 characters, including one uppercase letter, one special character, and one number.</div>
                 <div class="sm:col-span-2 flex justify-end"><button class="rounded-lg bg-parish px-8 py-4 font-bold text-white">Change Password</button></div>
             </form>
         </section>

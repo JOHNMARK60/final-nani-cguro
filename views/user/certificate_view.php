@@ -29,6 +29,9 @@ $isAdmin = Auth::role() === 'admin';
 $verifiedPayment = $paymentModel->verifiedFor('Certificate', $requestId, (int) $certificate['user_id']);
 $canViewDigital = $isAdmin || ($certificate['delivery_mode'] === 'E-Certificate' && $verifiedPayment !== null);
 $title = (string) $certificate['certificate_type'];
+$charge = !$isAdmin
+    ? $paymentModel->calculateCertificateCharge($requestId, (int) $certificate['user_id'])
+    : ['final_amount' => 150, 'discount_percent' => 0];
 $eventDate = !empty($certificate['event_date']) ? date('F d, Y', strtotime($certificate['event_date'])) : '________________';
 $birthDate = !empty($certificate['birth_date']) ? date('F d, Y', strtotime($certificate['birth_date'])) : '________________';
 $issuedDate = !empty($certificate['issued_at']) ? date('F d, Y', strtotime($certificate['issued_at'])) : date('F d, Y');
@@ -47,7 +50,7 @@ page_start($title);
                 <a href="certificates.php" class="mt-6 inline-block rounded-xl bg-parish px-6 py-3 font-bold text-white">Back to Certificates</a>
             <?php else: ?>
                 <p class="mt-3 text-slate-600">The admin already issued your e-certificate. You can view it after your certificate payment is verified.</p>
-                <a href="payments.php?certificate_id=<?= $requestId ?>&description=<?= urlencode($title . ' - ' . $certificate['recipient_name']) ?>&amount=150" class="mt-6 inline-block rounded-xl bg-parish px-6 py-3 font-bold text-white">Submit Payment</a>
+                <a href="payments.php?certificate_id=<?= $requestId ?>&description=<?= urlencode($title . ' - ' . $certificate['recipient_name']) ?>&amount=<?= e((string) $charge['final_amount']) ?>" class="mt-6 inline-block rounded-xl bg-parish px-6 py-3 font-bold text-white">Submit Payment<?= $charge['discount_percent'] > 0 ? ' with 10% Discount' : '' ?></a>
             <?php endif; ?>
         </section>
     <?php else: ?>
@@ -57,17 +60,17 @@ page_start($title);
         </div>
 
         <article class="certificate-paper mx-auto max-w-4xl bg-white p-8 shadow-soft print:shadow-none">
-            <div class="certificate-border relative min-h-[1040px] border-[6px] border-double border-blue-700 p-8 text-center">
+            <div class="certificate-border relative min-h-[1040px] border-[6px] border-double border-[#B8860B] p-8 text-center">
                 <div class="corner corner-tl"></div>
                 <div class="corner corner-tr"></div>
                 <div class="corner corner-bl"></div>
                 <div class="corner corner-br"></div>
 
-                <div class="mt-4 font-sans text-sm uppercase tracking-[0.28em] text-blue-900"><?= e($certificate['church_name']) ?></div>
+                <div class="mt-4 font-sans text-sm uppercase tracking-[0.28em] text-parish"><?= e($certificate['church_name']) ?></div>
                 <?php if (!empty($certificate['parish_address'])): ?>
                     <div class="mt-1 font-sans text-sm text-slate-600"><?= e($certificate['parish_address']) ?></div>
                 <?php endif; ?>
-                <div class="mx-auto mt-8 grid h-20 w-20 place-items-center text-6xl text-blue-700">+</div>
+                <div class="mx-auto mt-8 grid h-20 w-20 place-items-center text-6xl text-parish">+</div>
                 <h1 class="certificate-heading mt-6 text-5xl text-slate-950 sm:text-6xl"><?= e($title) ?></h1>
                 <div class="mt-4 font-sans text-sm uppercase tracking-widest text-slate-500">No. <?= e($certificate['certificate_number']) ?></div>
 
@@ -126,13 +129,13 @@ page_start($title);
     position: absolute;
     width: 78px;
     height: 78px;
-    border-color: #1d4ed8;
+    border-color: #B8860B;
 }
 .corner::before,
 .corner::after {
     content: "";
     position: absolute;
-    border: 3px solid #1d4ed8;
+    border: 3px solid #B8860B;
     border-radius: 999px;
 }
 .corner::before {

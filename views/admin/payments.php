@@ -39,12 +39,12 @@ app_header('Payment Management', $user);
         <?php flash_messages(); ?>
 
         <section class="mb-8 grid gap-4 md:grid-cols-3">
-            <div class="rounded-xl bg-green-700 p-6 text-white shadow-soft">
-                <div class="text-sm font-bold uppercase tracking-widest text-green-100">Verified Revenue</div>
+            <div class="rounded-xl bg-white p-6 shadow-soft ring-1 ring-yellow-100">
+                <div class="text-sm font-bold uppercase tracking-widest text-slate-500">Verified Revenue</div>
                 <div class="mt-3 text-3xl font-black"><?= e(peso($model->sumByStatus('Verified'))) ?></div>
             </div>
             <div class="rounded-xl bg-parish p-6 text-white shadow-soft">
-                <div class="text-sm font-bold uppercase tracking-widest text-blue-100">For Review</div>
+                <div class="text-sm font-bold uppercase tracking-widest">For Review</div>
                 <div class="mt-3 text-3xl font-black"><?= $model->countByStatus('Submitted') ?></div>
             </div>
             <div class="rounded-xl bg-gold p-6 text-slate-950 shadow-soft">
@@ -103,6 +103,9 @@ app_header('Payment Management', $user);
                             <td class="p-5">
                                 <div class="font-bold">#<?= (int) $row['id'] ?> <?= e($row['description']) ?></div>
                                 <div class="text-sm text-slate-500"><?= e($row['payable_type']) ?><?= !empty($row['reference_number']) ? ' | Ref: ' . e($row['reference_number']) : '' ?></div>
+                                <?php if ((float) ($row['discount_amount'] ?? 0) > 0): ?>
+                                    <div class="mt-1 text-sm font-semibold text-parish">Active volunteer discount: <?= e(peso($row['discount_amount'])) ?></div>
+                                <?php endif; ?>
                                 <?php if (!empty($row['remarks'])): ?>
                                     <div class="mt-1 text-sm text-rose-600"><?= e($row['remarks']) ?></div>
                                 <?php endif; ?>

@@ -57,6 +57,59 @@ final class User extends BaseModel
         return $this->fetchAll($sql, $params);
     }
 
+    public function users(array $filters = [], int $limit = 20, int $offset = 0): array
+    {
+        $sql = 'SELECT u.*, c.fullname AS created_by_name
+                FROM users u
+                LEFT JOIN users c ON c.id = u.created_by
+                WHERE 1=1';
+        $params = [];
+
+        if (!empty($filters['search'])) {
+            $sql .= ' AND (u.fullname LIKE ? OR u.email LIKE ? OR u.username LIKE ? OR u.phone LIKE ?)';
+            $like = '%' . $filters['search'] . '%';
+            $params = array_merge($params, [$like, $like, $like, $like]);
+        }
+
+        if (!empty($filters['role'])) {
+            $sql .= ' AND u.role = ?';
+            $params[] = $filters['role'];
+        }
+
+        if (!empty($filters['status'])) {
+            $sql .= ' AND u.status = ?';
+            $params[] = $filters['status'];
+        }
+
+        $sql .= ' ORDER BY u.created_at DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
+
+        return $this->fetchAll($sql, $params);
+    }
+
+    public function countUsers(array $filters = []): int
+    {
+        $sql = 'SELECT COUNT(*) AS total FROM users u WHERE 1=1';
+        $params = [];
+
+        if (!empty($filters['search'])) {
+            $sql .= ' AND (u.fullname LIKE ? OR u.email LIKE ? OR u.username LIKE ? OR u.phone LIKE ?)';
+            $like = '%' . $filters['search'] . '%';
+            $params = array_merge($params, [$like, $like, $like, $like]);
+        }
+
+        if (!empty($filters['role'])) {
+            $sql .= ' AND u.role = ?';
+            $params[] = $filters['role'];
+        }
+
+        if (!empty($filters['status'])) {
+            $sql .= ' AND u.status = ?';
+            $params[] = $filters['status'];
+        }
+
+        return (int) $this->fetch($sql, $params)['total'];
+    }
+
     public function countAdmins(array $filters = []): int
     {
         $sql = 'SELECT COUNT(*) AS total FROM users WHERE role = "admin"';
@@ -95,6 +148,48 @@ final class User extends BaseModel
         return (int) $this->db->lastInsertId();
     }
 
+    public function createManaged(array $data, ?int $createdBy = null): int
+    {
+        $this->execute(
+            'INSERT INTO users (fullname, email, username, password, role, status, phone, address, designation, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                $data['fullname'],
+                $data['email'],
+                $data['username'],
+                password_hash($data['password'], PASSWORD_DEFAULT),
+                $data['role'],
+                $data['status'] ?? 'active',
+                $data['phone'] ?? null,
+                $data['address'] ?? null,
+                $data['designation'] ?? null,
+                $createdBy,
+            ]
+        );
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function updateManaged(int $id, array $data): bool
+    {
+        return $this->execute(
+            'UPDATE users
+             SET fullname = ?, email = ?, username = ?, role = ?, status = ?, phone = ?, address = ?, designation = ?
+             WHERE id = ?',
+            [
+                $data['fullname'],
+                $data['email'],
+                $data['username'],
+                $data['role'],
+                $data['status'],
+                $data['phone'] ?? null,
+                $data['address'] ?? null,
+                $data['designation'] ?? null,
+                $id,
+            ]
+        );
+    }
+
     public function updateAdmin(int $id, array $data): bool
     {
         return $this->execute(
@@ -117,6 +212,11 @@ final class User extends BaseModel
             'UPDATE users SET status = ? WHERE id = ? AND role = "admin"',
             [$status, $id]
         );
+    }
+
+    public function setStatus(int $id, string $status): bool
+    {
+        return $this->execute('UPDATE users SET status = ? WHERE id = ?', [$status, $id]);
     }
 
     public function activeAdminCount(): int
@@ -159,16 +259,38 @@ final class User extends BaseModel
     public function updateProfile(int $id, array $data): bool
     {
         return $this->execute(
-            'UPDATE users SET fullname = ?, email = ?, username = ?, phone = ?, designation = ? WHERE id = ?',
+            'UPDATE users SET fullname = ?, email = ?, username = ?, phone = ?, address = ?, designation = ? WHERE id = ?',
             [
                 $data['fullname'],
                 $data['email'],
                 $data['username'],
                 $data['phone'] ?? null,
+                $data['address'] ?? null,
                 $data['designation'] ?? null,
                 $id,
             ]
         );
+    }
+
+    public function markActiveVolunteer(int $id): bool
+    {
+        return $this->execute(
+            'UPDATE users
+             SET active_volunteer = 1,
+                 volunteer_eligible_at = COALESCE(volunteer_eligible_at, NOW())
+             WHERE id = ?',
+            [$id]
+        );
+    }
+
+    public function clearActiveVolunteer(int $id): bool
+    {
+        return $this->execute('UPDATE users SET active_volunteer = 0, volunteer_eligible_at = NULL WHERE id = ?', [$id]);
+    }
+
+    public function activeVolunteerCount(): int
+    {
+        return (int) $this->fetch('SELECT COUNT(*) AS total FROM users WHERE active_volunteer = 1 AND status = "active"')['total'];
     }
 
     public function updateProfilePhoto(int $id, string $fileName): bool
@@ -224,5 +346,17 @@ final class User extends BaseModel
     public function countAll(): int
     {
         return (int) $this->fetch('SELECT COUNT(*) AS total FROM users')['total'];
+    }
+
+    public function volunteerEligibilityDistribution(): array
+    {
+        return $this->fetchAll(
+            'SELECT CASE WHEN active_volunteer = 1 THEN "Eligible / Active" ELSE "Not Eligible" END AS label,
+                    COUNT(*) AS total
+             FROM users
+             WHERE role = "user"
+             GROUP BY active_volunteer
+             ORDER BY active_volunteer DESC'
+        );
     }
 }

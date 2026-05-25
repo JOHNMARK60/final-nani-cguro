@@ -31,8 +31,9 @@ final class PaymentController extends BaseController
             $amount = (float) ($data['amount'] ?? 0);
             $method = trim((string) ($data['method'] ?? 'GCash'));
             $payableType = trim((string) ($data['payable_type'] ?? 'General'));
+            $payableId = !empty($data['payable_id']) ? (int) $data['payable_id'] : null;
 
-            if ($description === '' || $amount <= 0) {
+            if ($payableType !== 'Certificate' && ($description === '' || $amount <= 0)) {
                 $this->backWith('error', 'Please enter a payment description and valid Peso amount.', '/E-Parish/views/user/payments.php');
             }
 
@@ -40,12 +41,32 @@ final class PaymentController extends BaseController
                 $this->backWith('error', 'Invalid payment option selected.', '/E-Parish/views/user/payments.php');
             }
 
+            $originalAmount = $amount;
+            $discountPercent = 0.0;
+            $discountAmount = 0.0;
+
+            if ($payableType === 'Certificate') {
+                if ($payableId === null) {
+                    $this->backWith('error', 'Please choose a certificate request before creating a certificate payment.', '/E-Parish/views/user/payments.php');
+                }
+
+                $charge = $this->payments()->calculateCertificateCharge($payableId, (int) Auth::userId());
+                $description = $charge['certificate_type'] . ' - ' . $charge['full_name'];
+                $originalAmount = (float) $charge['original_amount'];
+                $discountPercent = (float) $charge['discount_percent'];
+                $discountAmount = (float) $charge['discount_amount'];
+                $amount = (float) $charge['final_amount'];
+            }
+
             $id = $this->payments()->create([
                 'user_id' => Auth::userId(),
                 'payable_type' => $payableType,
-                'payable_id' => !empty($data['payable_id']) ? (int) $data['payable_id'] : null,
+                'payable_id' => $payableId,
                 'description' => $description,
                 'amount' => $amount,
+                'original_amount' => $originalAmount,
+                'discount_percent' => $discountPercent,
+                'discount_amount' => $discountAmount,
                 'method' => $method,
                 'reference_number' => null,
                 'proof_file' => null,
@@ -91,8 +112,12 @@ final class PaymentController extends BaseController
                 ['jpg', 'jpeg', 'png', 'pdf']
             );
 
-            if ($method !== 'Cash' && $proofFile === null && $referenceNumber === '' && empty($payment['proof_file'])) {
-                $this->backWith('error', 'Please upload proof or enter a reference number.', '/E-Parish/views/user/payments.php');
+            if ($method !== 'Cash' && $referenceNumber === '') {
+                $this->backWith('error', 'Reference number is required for GCash and bank transfer payments.', '/E-Parish/views/user/payments.php');
+            }
+
+            if ($method !== 'Cash' && $proofFile === null && empty($payment['proof_file'])) {
+                $this->backWith('error', 'Proof of payment is required for GCash and bank transfer payments.', '/E-Parish/views/user/payments.php');
             }
 
             $this->payments()->submitProof(

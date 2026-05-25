@@ -63,7 +63,7 @@ class Appointment extends BaseModel
         $params = [];
         $where = 'WHERE a.appointment_date >= CURDATE()
             AND a.appointment_date <= DATE_ADD(CURDATE(), INTERVAL ' . (int) $days . ' DAY)
-            AND a.status <> "Rejected"';
+            AND a.status IN ("Approved", "Confirmed")';
 
         if ($userId !== null) {
             $where .= ' AND a.user_id = ?';
@@ -87,7 +87,7 @@ class Appointment extends BaseModel
         $start = (new \DateTimeImmutable($month . '-01'))->format('Y-m-01');
         $end = (new \DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
         $params = [$start, $end];
-        $where = 'WHERE a.appointment_date BETWEEN ? AND ? AND a.status <> "Rejected"';
+        $where = 'WHERE a.appointment_date BETWEEN ? AND ? AND a.status IN ("Approved", "Confirmed")';
 
         if ($userId !== null) {
             $where .= ' AND a.user_id = ?';
@@ -288,6 +288,16 @@ class Appointment extends BaseModel
              WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ' . (int) $months . ' MONTH)
              GROUP BY DATE_FORMAT(created_at, "%Y-%m")
              ORDER BY month ASC'
+        );
+    }
+
+    public function statusDistribution(): array
+    {
+        return $this->fetchAll(
+            'SELECT status AS label, COUNT(*) AS total
+             FROM appointments
+             GROUP BY status
+             ORDER BY status ASC'
         );
     }
 

@@ -9,6 +9,8 @@ use InvalidArgumentException;
 
 final class VolunteerService extends BaseModel
 {
+    private const ELIGIBLE_STATUSES = ['Approved', 'Verified'];
+
     public function create(array $data): bool
     {
         return $this->execute(
@@ -61,6 +63,73 @@ final class VolunteerService extends BaseModel
     public function updateStatus(int $id, string $status): bool
     {
         return $this->execute('UPDATE volunteer_service SET status = ? WHERE id = ?', [$status, $id]);
+    }
+
+    public function approvedHoursForUser(int $userId): float
+    {
+        $row = $this->fetch(
+            'SELECT COALESCE(SUM(hours_served), 0) AS total
+             FROM volunteer_service
+             WHERE user_id = ? AND status IN ("Approved", "Verified")',
+            [$userId]
+        );
+
+        return (float) ($row['total'] ?? 0);
+    }
+
+    public function isEligible(int $userId): bool
+    {
+        return $this->approvedHoursForUser($userId) >= $this->requiredHours();
+    }
+
+    public function markEligibleIfQualified(int $userId): bool
+    {
+        if (!$this->isEligible($userId)) {
+            return false;
+        }
+
+        (new User($this->db))->markActiveVolunteer($userId);
+
+        return true;
+    }
+
+    public function eligibilitySummary(int $userId): array
+    {
+        $approvedHours = $this->approvedHoursForUser($userId);
+        $requiredHours = $this->requiredHours();
+        $isEligible = $approvedHours >= $requiredHours;
+
+        if ($isEligible) {
+            (new User($this->db))->markActiveVolunteer($userId);
+        }
+
+        return [
+            'approved_hours' => $approvedHours,
+            'required_hours' => $requiredHours,
+            'is_eligible' => $isEligible,
+            'remaining_hours' => max(0, $requiredHours - $approvedHours),
+        ];
+    }
+
+    public function eligibleVolunteerCount(): int
+    {
+        return (int) $this->fetch(
+            'SELECT COUNT(*) AS total
+             FROM users
+             WHERE active_volunteer = 1 AND status = "active"'
+        )['total'];
+    }
+
+    public function eligibilityDistribution(): array
+    {
+        return $this->fetchAll(
+            'SELECT CASE WHEN active_volunteer = 1 THEN "Eligible / Active" ELSE "Not Eligible" END AS label,
+                    COUNT(*) AS total
+             FROM users
+             WHERE role = "user"
+             GROUP BY active_volunteer
+             ORDER BY active_volunteer DESC'
+        );
     }
 
     public function countForUser(int $userId): int
@@ -161,5 +230,10 @@ final class VolunteerService extends BaseModel
         }
 
         return (int) $row['id'];
+    }
+
+    private function requiredHours(): float
+    {
+        return (new AppSetting($this->db))->volunteerRequiredHours();
     }
 }

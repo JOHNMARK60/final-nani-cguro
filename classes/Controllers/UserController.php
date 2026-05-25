@@ -117,6 +117,7 @@ final class UserController extends BaseController
                 'email' => trim($data['email']),
                 'username' => trim($data['username']),
                 'phone' => trim($data['phone'] ?? ''),
+                'address' => trim($data['address'] ?? ''),
                 'designation' => trim($data['designation'] ?? ''),
             ]);
 

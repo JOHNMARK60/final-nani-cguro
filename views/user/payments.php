@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use App\Models\Payment;
 use App\Models\ReferenceData;
+use App\Models\AppSetting;
 use App\Models\User;
-use App\Core\Env;
 use App\Security\Auth;
 
 $container = require __DIR__ . '/../../config/app.php';
@@ -16,6 +16,7 @@ Auth::requireLogin('/E-Parish/index.php');
 $user = (new User($container->pdo()))->find(Auth::userId()) ?? [];
 $paymentModel = new Payment($container->pdo());
 $reference = new ReferenceData($container->pdo());
+$settings = new AppSetting($container->pdo());
 $payments = $paymentModel->forUser((int) Auth::userId());
 $paymentMethods = $reference->paymentMethods();
 $paymentCategories = $reference->paymentCategories();
@@ -25,8 +26,18 @@ $unpaidTotal = $paymentModel->sumByStatus('Unpaid', (int) Auth::userId());
 $prefillCertificateId = (int) ($_GET['certificate_id'] ?? 0);
 $prefillDescription = trim((string) ($_GET['description'] ?? ''));
 $prefillAmount = (float) ($_GET['amount'] ?? 0);
-$gcashName = Env::get('GCASH_MERCHANT_NAME', 'Parish Office');
-$gcashNumber = Env::get('GCASH_MERCHANT_NUMBER', '');
+$prefillCharge = null;
+
+if ($prefillCertificateId > 0) {
+    $prefillCharge = $paymentModel->calculateCertificateCharge($prefillCertificateId, (int) Auth::userId());
+    $prefillDescription = $prefillCharge['certificate_type'] . ' - ' . $prefillCharge['full_name'];
+    $prefillAmount = (float) $prefillCharge['final_amount'];
+}
+
+$gcash = $settings->gcash();
+$gcashName = $gcash['account_name'] ?: 'Parish Office';
+$gcashNumber = $gcash['number'];
+$gcashQr = trim((string) ($gcash['qr_code'] ?? ''));
 
 page_start('Payments');
 sidebar('Payments');
@@ -49,7 +60,7 @@ app_header('Payments', $user);
         <section class="grid gap-4 md:grid-cols-3">
             <div class="rounded-xl bg-white p-6 shadow-soft">
                 <div class="text-sm font-bold uppercase tracking-widest text-slate-500">Verified Payments</div>
-                <div class="mt-3 text-3xl font-black text-green-700"><?= e(peso($paidTotal)) ?></div>
+                <div class="mt-3 text-3xl font-black text-parish"><?= e(peso($paidTotal)) ?></div>
             </div>
             <div class="rounded-xl bg-white p-6 shadow-soft">
                 <div class="text-sm font-bold uppercase tracking-widest text-slate-500">For Review</div>
@@ -86,6 +97,12 @@ app_header('Payments', $user);
                             <td class="p-5">
                                 <div class="font-bold">#<?= (int) $payment['id'] ?> <?= e($payment['description']) ?></div>
                                 <div class="text-sm text-slate-500"><?= e($payment['payable_type']) ?><?= !empty($payment['reference_number']) ? ' | Ref: ' . e($payment['reference_number']) : '' ?></div>
+                                <?php if ((float) ($payment['discount_amount'] ?? 0) > 0): ?>
+                                    <div class="mt-1 text-sm font-semibold text-parish">
+                                        Discount: <?= e(number_format((float) $payment['discount_percent'], 0)) ?>%
+                                        (<?= e(peso($payment['discount_amount'])) ?>)
+                                    </div>
+                                <?php endif; ?>
                                 <?php if (!empty($payment['remarks'])): ?>
                                     <div class="mt-1 text-sm text-rose-600"><?= e($payment['remarks']) ?></div>
                                 <?php endif; ?>
@@ -127,7 +144,7 @@ app_header('Payments', $user);
         <input type="hidden" name="payable_id" value="<?= $prefillCertificateId > 0 ? $prefillCertificateId : '' ?>">
         <div class="grid gap-4 sm:grid-cols-2">
             <label class="sm:col-span-2"><span class="mb-1 block font-bold">Description</span><input name="description" value="<?= e($prefillDescription) ?>" required placeholder="Example: Baptismal certificate fee" class="w-full rounded-lg border border-slate-200 p-3"></label>
-            <label><span class="mb-1 block font-bold">Amount in Peso</span><input name="amount" type="number" min="1" step="0.01" value="<?= $prefillAmount > 0 ? e((string) $prefillAmount) : '' ?>" required placeholder="0.00" class="w-full rounded-lg border border-slate-200 p-3"></label>
+            <label><span class="mb-1 block font-bold">Amount in Peso</span><input name="amount" type="number" min="1" step="0.01" value="<?= $prefillAmount > 0 ? e((string) $prefillAmount) : '' ?>" required placeholder="0.00" <?= $prefillCertificateId > 0 ? 'readonly' : '' ?> class="w-full rounded-lg border border-slate-200 p-3 <?= $prefillCertificateId > 0 ? 'bg-slate-100' : '' ?>"></label>
             <label>
                 <span class="mb-1 block font-bold">Payment For</span>
                 <select name="payable_type" class="w-full rounded-lg border border-slate-200 p-3">
@@ -145,13 +162,24 @@ app_header('Payments', $user);
                 </select>
             </label>
         </div>
-        <div class="mt-5 rounded-lg bg-green-50 p-4 text-sm font-semibold text-green-700">
+        <?php if ($prefillCharge !== null): ?>
+            <div class="mt-5 grid gap-3 rounded-lg bg-yellow-50 p-4 text-sm font-semibold text-yellow-900 sm:grid-cols-2">
+                <div>Original Amount: <span class="font-black"><?= e(peso($prefillCharge['original_amount'])) ?></span></div>
+                <div>Discount: <span class="font-black"><?= e(number_format((float) $prefillCharge['discount_percent'], 0)) ?>%</span></div>
+                <div>Discount Amount: <span class="font-black"><?= e(peso($prefillCharge['discount_amount'])) ?></span></div>
+                <div>Final Amount: <span class="font-black"><?= e(peso($prefillCharge['final_amount'])) ?></span></div>
+            </div>
+        <?php endif; ?>
+        <div class="mt-5 rounded-lg bg-yellow-50 p-4 text-sm font-semibold text-yellow-900">
             <?php if ($gcashNumber !== ''): ?>
                 Pay through GCash to <?= e($gcashName) ?> at <?= e($gcashNumber) ?>, then open this payment and upload your reference number and proof.
             <?php else: ?>
-                GCash receiving number is not configured yet. Add GCASH_MERCHANT_NUMBER in .env before accepting live GCash payments.
+                GCash receiving number is not configured yet. Ask the parish office for the official number before paying.
             <?php endif; ?>
         </div>
+        <?php if ($gcashQr !== ''): ?>
+            <img src="/E-Parish/uploads/<?= e($gcashQr) ?>" alt="GCash QR Code" class="mt-4 max-h-64 w-full rounded-lg border border-slate-200 object-contain p-3">
+        <?php endif; ?>
         <button class="mt-6 w-full rounded-lg bg-parish py-3 font-bold text-white">Create Payment Record</button>
     </form>
 </div>
@@ -167,13 +195,16 @@ app_header('Payments', $user);
         </div>
         <?= csrf_field() ?>
         <input type="hidden" name="id" id="upload_payment_id">
-        <div class="mb-5 rounded-lg bg-green-50 p-4 text-sm font-semibold text-green-700">
+        <div class="mb-5 rounded-lg bg-yellow-50 p-4 text-sm font-semibold text-yellow-900">
             <?php if ($gcashNumber !== ''): ?>
                 GCash: send payment to <?= e($gcashName) ?> at <?= e($gcashNumber) ?>, then enter the reference number from your receipt.
             <?php else: ?>
                 GCash receiving number is not configured yet. Ask the parish office for the official number before paying.
             <?php endif; ?>
         </div>
+        <?php if ($gcashQr !== ''): ?>
+            <img src="/E-Parish/uploads/<?= e($gcashQr) ?>" alt="GCash QR Code" class="mb-5 max-h-56 w-full rounded-lg border border-slate-200 object-contain p-3">
+        <?php endif; ?>
         <div class="grid gap-4">
             <label>
                 <span class="mb-1 block font-bold">Method</span>

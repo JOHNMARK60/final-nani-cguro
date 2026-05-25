@@ -76,6 +76,9 @@ final class VolunteerController extends BaseController
         }
 
         $model->updateStatus($id, $status);
+        if (in_array($status, ['Approved', 'Verified'], true) && !empty($request['user_id'])) {
+            $model->markEligibleIfQualified((int) $request['user_id']);
+        }
         $this->container->audit()->log('volunteer_status_change', 'volunteer_service', $id, 'Status changed to ' . $status . '.');
 
         if (!empty($request['email'])) {
